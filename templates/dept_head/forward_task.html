@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}Forward Task - Digital Homeez{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h4><i class="bi bi-forward"></i> Forward Task: {{ task.task_name }}</h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label class="form-label">Forward To Team Members</label>
+                            {% for member in members %}
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="assign_to[]" 
+                                       value="{{ member.id }}" id="member{{ member.id }}"
+                                       {% if member.id in current_assignments %}checked{% endif %}>
+                                <label class="form-check-label" for="member{{ member.id }}">
+                                    {{ member.full_name }} ({{ member.email }})
+                                </label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{{ url_for('dept_head.dashboard') }}" class="btn btn-secondary">Cancel</a>
+                            <button type="submit" class="btn btn-primary">Forward Task</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

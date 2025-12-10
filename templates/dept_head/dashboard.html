@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block title %}Department Head Dashboard - Digital Homeez{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <main class="col-md-12 main-content">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1><i class="bi bi-clipboard-check"></i> Department Tasks</h1>
+                <a href="{{ url_for('dept_head.create_task') }}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle"></i> Create Task
+                </a>
+            </div>
+
+            <div class="card">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Created</th>
+                                    <th>Deadline</th>
+                                    <th>Task Name</th>
+                                    <th>Priority</th>
+                                    <th>Status</th>
+                                    <th>Members</th>
+                                    <th>Client</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for task in tasks %}
+                                <tr>
+                                    <td>{{ task.created_at.strftime('%Y-%m-%d %H:%M') if task.created_at else 'N/A' }}</td>
+                                    <td>
+                                        {% if task.deadline %}
+                                            {{ task.deadline.strftime('%Y-%m-%d %H:%M') }}
+                                        {% else %}
+                                            N/A
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('tasks.view_task', task_id=task.id) }}" class="text-decoration-none">
+                                            {{ task.task_name }}
+                                        </a>
+                                    </td>
+                                    <td>
+                                        {% if task.priority == 'URGENT' %}
+                                            <span class="badge badge-urgent">URGENT</span>
+                                        {% elif task.priority == 'IMPORTANT' %}
+                                            <span class="badge badge-important">IMPORTANT</span>
+                                        {% else %}
+                                            <span class="badge badge-daily">DAILY TASK</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-secondary">{{ task.status }}</span>
+                                    </td>
+                                    <td>
+                                        {% for assignment in task.assignments[:3] %}
+                                            <span class="badge bg-info">{{ assignment.user.full_name }}</span>
+                                        {% endfor %}
+                                        {% if task.assignments|length > 3 %}
+                                            <span class="badge bg-secondary">+{{ task.assignments|length - 3 }} more</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ task.client_name or 'N/A' }}</td>
+                                    <td>
+                                        <a href="{{ url_for('tasks.view_task', task_id=task.id) }}" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                        <a href="{{ url_for('dept_head.forward_task', task_id=task.id) }}" class="btn btn-sm btn-outline-info">
+                                            <i class="bi bi-forward"></i>
+                                        </a>
+                                        <a href="{{ url_for('dept_head.reassign_task', task_id=task.id) }}" class="btn btn-sm btn-outline-warning">
+                                            <i class="bi bi-arrow-left-right"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="8" class="text-center text-muted">No tasks found</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-4">
+                <a href="{{ url_for('dept_head.team_members') }}" class="btn btn-outline-primary">
+                    <i class="bi bi-people"></i> Manage Team Members
+                </a>
+            </div>
+        </main>
+    </div>
+</div>
+{% endblock %}
+

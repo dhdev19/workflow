@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}Assign Task - Digital Homeez{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="card">
+                <div class="card-header">
+                    <h4><i class="bi bi-person-check"></i> Assign Task: {{ task.task_name }}</h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label class="form-label">Assign To</label>
+                            <div id="assignments">
+                                <div class="row mb-2">
+                                    <div class="col-md-6">
+                                        <select class="form-select" name="assign_type[]">
+                                            <option value="user">User</option>
+                                            <option value="department">Department</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <select class="form-select" name="assign_to[]">
+                                            <option value="">Select...</option>
+                                            {% for user in users %}
+                                                <option value="{{ user.id }}" {% if user.id in current_assignments %}selected{% endif %}>{{ user.full_name }} ({{ user.role }})</option>
+                                            {% endfor %}
+                                            {% for dept in departments %}
+                                                <option value="{{ dept.id }}">Department: {{ dept.name }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="addAssignment()">
+                                <i class="bi bi-plus"></i> Add More
+                            </button>
+                        </div>
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{{ url_for('admin.dashboard') }}" class="btn btn-secondary">Cancel</a>
+                            <button type="submit" class="btn btn-primary">Update Assignments</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function addAssignment() {
+    const container = document.getElementById('assignments');
+    const newRow = document.createElement('div');
+    newRow.className = 'row mb-2';
+    newRow.innerHTML = `
+        <div class="col-md-6">
+            <select class="form-select" name="assign_type[]">
+                <option value="user">User</option>
+                <option value="department">Department</option>
+            </select>
+        </div>
+        <div class="col-md-5">
+            <select class="form-select" name="assign_to[]">
+                <option value="">Select...</option>
+                {% for user in users %}
+                    <option value="{{ user.id }}">{{ user.full_name }} ({{ user.role }})</option>
+                {% endfor %}
+                {% for dept in departments %}
+                    <option value="{{ dept.id }}">Department: {{ dept.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-1">
+            <button type="button" class="btn btn-sm btn-danger" onclick="this.parentElement.parentElement.remove()">
+                <i class="bi bi-x"></i>
+            </button>
+        </div>
+    `;
+    container.appendChild(newRow);
+}
+</script>
+{% endblock %}
+

@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}Create Task - Digital Homeez{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="card">
+                <div class="card-header">
+                    <h4><i class="bi bi-plus-circle"></i> Create New Task</h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Task Name *</label>
+                                <input type="text" class="form-control" name="task_name" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Priority *</label>
+                                <select class="form-select" name="priority" required>
+                                    <option value="URGENT">URGENT</option>
+                                    <option value="IMPORTANT">IMPORTANT</option>
+                                    <option value="DAILY TASK">DAILY TASK</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Description</label>
+                            <textarea class="form-control" name="description" rows="3"></textarea>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Client Name</label>
+                                <input type="text" class="form-control" name="client_name">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Deadline</label>
+                                <input type="datetime-local" class="form-control" name="deadline">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Remark</label>
+                            <textarea class="form-control" name="remark" rows="2"></textarea>
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{{ url_for('team_member.dashboard') }}" class="btn btn-secondary">Cancel</a>
+                            <button type="submit" class="btn btn-primary">Create Task</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block title %}Create Task - Digital Homeez{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="card">
+                <div class="card-header">
+                    <h4><i class="bi bi-plus-circle"></i> Create New Task</h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Task Name *</label>
+                                <input type="text" class="form-control" name="task_name" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Priority *</label>
+                                <select class="form-select" name="priority" required>
+                                    <option value="URGENT">URGENT</option>
+                                    <option value="IMPORTANT">IMPORTANT</option>
+                                    <option value="DAILY TASK">DAILY TASK</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Description</label>
+                            <textarea class="form-control" name="description" rows="3"></textarea>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Department *</label>
+                                <select class="form-select" name="department_id" required>
+                                    {% for dept in departments %}
+                                        <option value="{{ dept.id }}">{{ dept.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Client Name</label>
+                                <input type="text" class="form-control" name="client_name">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Deadline</label>
+                            <input type="datetime-local" class="form-control" name="deadline">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Remark</label>
+                            <textarea class="form-control" name="remark" rows="2"></textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Assign To</label>
+                            <div id="assignments">
+                                <div class="row mb-2">
+                                    <div class="col-md-6">
+                                        <select class="form-select" name="assign_type[]">
+                                            <option value="user">User</option>
+                                            <option value="department">Department</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <select class="form-select" name="assign_to[]">
+                                            <option value="">Select...</option>
+                                            {% for user in users %}
+                                                <option value="{{ user.id }}">{{ user.full_name }} ({{ user.role }})</option>
+                                            {% endfor %}
+                                            {% for dept in departments %}
+                                                <option value="{{ dept.id }}">Department: {{ dept.name }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="addAssignment()">
+                                <i class="bi bi-plus"></i> Add More
+                            </button>
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{{ url_for('admin.dashboard') }}" class="btn btn-secondary">Cancel</a>
+                            <button type="submit" class="btn btn-primary">Create Task</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function addAssignment() {
+    const container = document.getElementById('assignments');
+    const newRow = document.createElement('div');
+    newRow.className = 'row mb-2';
+    newRow.innerHTML = `
+        <div class="col-md-6">
+            <select class="form-select" name="assign_type[]">
+                <option value="user">User</option>
+                <option value="department">Department</option>
+            </select>
+        </div>
+        <div class="col-md-5">
+            <select class="form-select" name="assign_to[]">
+                <option value="">Select...</option>
+                {% for user in users %}
+                    <option value="{{ user.id }}">{{ user.full_name }} ({{ user.role }})</option>
+                {% endfor %}
+                {% for dept in departments %}
+                    <option value="{{ dept.id }}">Department: {{ dept.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-1">
+            <button type="button" class="btn btn-sm btn-danger" onclick="this.parentElement.parentElement.remove()">
+                <i class="bi bi-x"></i>
+            </button>
+        </div>
+    `;
+    container.appendChild(newRow);
+}
+</script>
+{% endblock %}
+

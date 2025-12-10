@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+
+{% block title %}Task Detail - Digital Homeez{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h4>{{ task.task_name }}</h4>
+                    <div>
+                        {% if task.priority == 'URGENT' %}
+                            <span class="badge badge-urgent">URGENT</span>
+                        {% elif task.priority == 'IMPORTANT' %}
+                            <span class="badge badge-important">IMPORTANT</span>
+                        {% else %}
+                            <span class="badge badge-daily">DAILY TASK</span>
+                        {% endif %}
+                        <span class="badge bg-secondary">{{ task.status }}</span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <strong>Department:</strong> {{ task.department.name if task.department else 'N/A' }}
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Client:</strong> {{ task.client_name or 'N/A' }}
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <strong>Created:</strong> {{ task.created_at.strftime('%Y-%m-%d %H:%M') if task.created_at else 'N/A' }}
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Deadline:</strong> 
+                            {% if task.deadline %}
+                                {{ task.deadline.strftime('%Y-%m-%d %H:%M') }}
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <strong>Description:</strong>
+                        <p>{{ task.description or 'No description' }}</p>
+                    </div>
+                    {% if task.remark %}
+                    <div class="mb-3">
+                        <strong>Remark:</strong>
+                        <p>{{ task.remark }}</p>
+                    </div>
+                    {% endif %}
+                    <div class="mb-3">
+                        <strong>Assigned To:</strong>
+                        {% for assignment in task.assignments %}
+                            <span class="badge bg-info">{{ assignment.user.full_name }}</span>
+                        {% endfor %}
+                    </div>
+
+                    {% if current_user.role == 'team_member' %}
+                    <div class="mb-3">
+                        <form method="POST" action="{{ url_for('team_member.update_task_status', task_id=task.id) }}">
+                            <label class="form-label"><strong>Update Status:</strong></label>
+                            <select class="form-select d-inline-block w-auto" name="status" onchange="this.form.submit()">
+                                <option value="ASSIGNED" {% if task.status == 'ASSIGNED' %}selected{% endif %}>ASSIGNED</option>
+                                <option value="PENDING" {% if task.status == 'PENDING' %}selected{% endif %}>PENDING</option>
+                                <option value="COMPLETED" {% if task.status == 'COMPLETED' %}selected{% endif %}>COMPLETED</option>
+                                <option value="Review with ADMIN" {% if task.status == 'Review with ADMIN' %}selected{% endif %}>Review with ADMIN</option>
+                                <option value="Waiting for approval from Client" {% if task.status == 'Waiting for approval from Client' %}selected{% endif %}>Waiting for approval from Client</option>
+                            </select>
+                        </form>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Subtasks -->
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5>Subtasks</h5>
+                    <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addSubtaskModal">
+                        <i class="bi bi-plus-circle"></i> Add Subtask
+                    </button>
+                </div>
+                <div class="card-body">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Subtask Name</th>
+                                <th>Status</th>
+                                <th>Created By</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for subtask in task.subtasks %}
+                            <tr>
+                                <td>{{ subtask.subtask_name }}</td>
+                                <td>
+                                    <span class="badge {% if subtask.status == 'COMPLETED' %}bg-success{% else %}bg-warning{% endif %}">
+                                        {{ subtask.status }}
+                                    </span>
+                                </td>
+                                <td>{{ subtask.creator.full_name }}</td>
+                                <td>
+                                    <form method="POST" action="{{ url_for('tasks.update_subtask_status', subtask_id=subtask.id) }}" style="display:inline;">
+                                        <select class="form-select form-select-sm d-inline-block w-auto" name="status" onchange="this.form.submit()">
+                                            <option value="PENDING" {% if subtask.status == 'PENDING' %}selected{% endif %}>PENDING</option>
+                                            <option value="COMPLETED" {% if subtask.status == 'COMPLETED' %}selected{% endif %}>COMPLETED</option>
+                                        </select>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="4" class="text-center text-muted">No subtasks</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="mt-3">
+                {% if current_user.role == 'admin' %}
+                    <a href="{{ url_for('admin.dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+                    <a href="{{ url_for('admin.edit_task', task_id=task.id) }}" class="btn btn-primary">Edit Task</a>
+                    <a href="{{ url_for('admin.assign_task', task_id=task.id) }}" class="btn btn-info">Assign Task</a>
+                {% elif current_user.role == 'department_head' %}
+                    <a href="{{ url_for('dept_head.dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+                    <a href="{{ url_for('dept_head.forward_task', task_id=task.id) }}" class="btn btn-primary">Forward Task</a>
+                    <a href="{{ url_for('dept_head.reassign_task', task_id=task.id) }}" class="btn btn-info">Reassign Task</a>
+                {% else %}
+                    <a href="{{ url_for('team_member.dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Subtask Modal -->
+<div class="modal fade" id="addSubtaskModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add Subtask</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('tasks.add_subtask', task_id=task.id) }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Subtask Name *</label>
+                        <input type="text" class="form-control" name="subtask_name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <textarea class="form-control" name="description" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Subtask</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

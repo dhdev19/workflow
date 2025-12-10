@@ -1,0 +1,215 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard - Digital Homeez{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <nav class="col-md-2 sidebar">
+            <div class="position-sticky pt-3">
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="{{ url_for('admin.dashboard') }}">
+                            <i class="bi bi-house"></i> Homepage
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin.departments') }}">
+                            <i class="bi bi-building"></i> Departments
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin.users') }}">
+                            <i class="bi bi-people"></i> Users
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin.analytics') }}">
+                            <i class="bi bi-bar-chart"></i> Analytics
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </nav>
+
+        <main class="col-md-10 main-content">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1><i class="bi bi-clipboard-check"></i> All Tasks</h1>
+                <a href="{{ url_for('admin.create_task') }}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle"></i> Create Task
+                </a>
+            </div>
+
+            <!-- Statistics Cards -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="card text-white bg-primary">
+                        <div class="card-body">
+                            <h5 class="card-title">Total Tasks</h5>
+                            <h2>{{ total_tasks }}</h2>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-white bg-success">
+                        <div class="card-body">
+                            <h5 class="card-title">Completed</h5>
+                            <h2>{{ completed_tasks }}</h2>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-white bg-warning">
+                        <div class="card-body">
+                            <h5 class="card-title">Pending</h5>
+                            <h2>{{ pending_tasks }}</h2>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-white bg-danger">
+                        <div class="card-body">
+                            <h5 class="card-title">Urgent</h5>
+                            <h2>{{ urgent_tasks }}</h2>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <form method="GET" action="{{ url_for('admin.dashboard') }}" class="row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label">Task Name</label>
+                            <input type="text" class="form-control" name="task_name" value="{{ filters.task_name }}">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Status</label>
+                            <select class="form-select" name="status">
+                                <option value="">All</option>
+                                <option value="COMPLETED" {% if filters.status == 'COMPLETED' %}selected{% endif %}>COMPLETED</option>
+                                <option value="PENDING" {% if filters.status == 'PENDING' %}selected{% endif %}>PENDING</option>
+                                <option value="ASSIGNED" {% if filters.status == 'ASSIGNED' %}selected{% endif %}>ASSIGNED</option>
+                                <option value="Review with ADMIN" {% if filters.status == 'Review with ADMIN' %}selected{% endif %}>Review with ADMIN</option>
+                                <option value="Waiting for approval from Client" {% if filters.status == 'Waiting for approval from Client' %}selected{% endif %}>Waiting for approval</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Department</label>
+                            <select class="form-select" name="department_id">
+                                <option value="">All</option>
+                                {% for dept in departments %}
+                                    <option value="{{ dept.id }}" {% if filters.department_id == dept.id|string %}selected{% endif %}>{{ dept.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Client Name</label>
+                            <input type="text" class="form-control" name="client_name" value="{{ filters.client_name }}">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">&nbsp;</label>
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="bi bi-search"></i> Filter
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Tasks Table -->
+            <div class="card">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Created</th>
+                                    <th>Deadline</th>
+                                    <th>Task Name</th>
+                                    <th>Department</th>
+                                    <th>Priority</th>
+                                    <th>Status</th>
+                                    <th>Members</th>
+                                    <th>Client</th>
+                                    <th>Remark</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for task in tasks %}
+                                <tr>
+                                    <td>{{ task.created_at.strftime('%Y-%m-%d %H:%M') if task.created_at else 'N/A' }}</td>
+                                    <td>
+                                        {% if task.deadline %}
+                                            {{ task.deadline.strftime('%Y-%m-%d %H:%M') }}
+                                        {% else %}
+                                            N/A
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('tasks.view_task', task_id=task.id) }}" class="text-decoration-none">
+                                            {{ task.task_name }}
+                                        </a>
+                                    </td>
+                                    <td>{{ task.department.name if task.department else 'N/A' }}</td>
+                                    <td>
+                                        {% if task.priority == 'URGENT' %}
+                                            <span class="badge badge-urgent">URGENT</span>
+                                        {% elif task.priority == 'IMPORTANT' %}
+                                            <span class="badge badge-important">IMPORTANT</span>
+                                        {% else %}
+                                            <span class="badge badge-daily">DAILY TASK</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-secondary">{{ task.status }}</span>
+                                    </td>
+                                    <td>
+                                        {% for assignment in task.assignments[:3] %}
+                                            <span class="badge bg-info">{{ assignment.user.full_name }}</span>
+                                        {% endfor %}
+                                        {% if task.assignments|length > 3 %}
+                                            <span class="badge bg-secondary">+{{ task.assignments|length - 3 }} more</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ task.client_name or 'N/A' }}</td>
+                                    <td>
+                                        {% if task.remark %}
+                                            <span class="text-muted" title="{{ task.remark }}">
+                                                {{ task.remark[:30] }}{% if task.remark|length > 30 %}...{% endif %}
+                                            </span>
+                                        {% else %}
+                                            N/A
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('tasks.view_task', task_id=task.id) }}" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                        <a href="{{ url_for('admin.edit_task', task_id=task.id) }}" class="btn btn-sm btn-outline-secondary">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <form method="POST" action="{{ url_for('admin.delete_task', task_id=task.id) }}" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete this task?');">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="10" class="text-center text-muted">No tasks found</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+{% endblock %}
+

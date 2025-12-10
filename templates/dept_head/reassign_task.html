@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}Reassign Task - Digital Homeez{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h4><i class="bi bi-arrow-left-right"></i> Reassign Task: {{ task.task_name }}</h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label class="form-label">New Department Head *</label>
+                            <select class="form-select" name="new_dept_head_id" required>
+                                <option value="">Select Department Head...</option>
+                                {% for head in dept_heads %}
+                                    <option value="{{ head.id }}">{{ head.full_name }} - {{ head.department.name if head.department else 'No Department' }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{{ url_for('dept_head.dashboard') }}" class="btn btn-secondary">Cancel</a>
+                            <button type="submit" class="btn btn-primary">Reassign Task</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
