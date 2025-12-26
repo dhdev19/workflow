@@ -33,8 +33,19 @@ def can_access_task(user, task):
     if user.role == 'admin':
         return True
     elif user.role == 'department_head':
-        # Department head can see tasks in their department
-        return user.department_id == task.department_id
+        # Department head can see tasks in their department OR tasks assigned to their department
+        if not user.department_id:
+            return False
+        # Check if task belongs to their department
+        if user.department_id == task.department_id:
+            return True
+        # Check if task is assigned to their department via TaskDepartmentAssignment
+        from models import TaskDepartmentAssignment
+        dept_assignment = TaskDepartmentAssignment.query.filter_by(
+            task_id=task.id,
+            department_id=user.department_id
+        ).first()
+        return dept_assignment is not None
     elif user.role == 'team_member':
         # Team member can only see tasks assigned to them
         return any(assignment.user_id == user.id for assignment in task.assignments)

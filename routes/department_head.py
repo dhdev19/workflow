@@ -4,6 +4,7 @@ from models import db, User, Department, Task, TaskAssignment, Subtask, TaskDepa
 from extensions import bcrypt
 from utils import dept_head_required
 from datetime import datetime
+from sqlalchemy import or_
 
 dept_head_bp = Blueprint('dept_head', __name__)
 
@@ -17,7 +18,22 @@ def dashboard():
         flash('You are not assigned to any department', 'error')
         return redirect(url_for('auth.logout'))
     
-    tasks = Task.query.filter_by(department_id=dept_id).order_by(Task.created_at.desc()).all()
+    # Get tasks that belong to this department OR are assigned to this department
+    # Get task IDs assigned to this department via TaskDepartmentAssignment
+    assigned_task_ids = [a.task_id for a in TaskDepartmentAssignment.query.filter_by(department_id=dept_id).all()]
+    
+    # Query tasks: either primary department matches OR task is assigned to this department
+    if assigned_task_ids:
+        tasks = Task.query.filter(
+            or_(
+                Task.department_id == dept_id,
+                Task.id.in_(assigned_task_ids)
+            )
+        ).order_by(Task.created_at.desc()).all()
+    else:
+        # If no assigned tasks, just get primary department tasks
+        tasks = Task.query.filter_by(department_id=dept_id).order_by(Task.created_at.desc()).all()
+    
     return render_template('dept_head/dashboard.html', tasks=tasks)
 
 @dept_head_bp.route('/team-members')
@@ -136,12 +152,39 @@ def create_task():
                     )
                     db.session.add(assignment)
         
+        # Assign to departments (including own department)
+        assign_to_depts = request.form.getlist('assign_to_dept[]')
+        for dept_id_str in assign_to_depts:
+            if dept_id_str:
+                assigned_dept_id = int(dept_id_str)
+                # Check if assignment already exists
+                existing = TaskDepartmentAssignment.query.filter_by(
+                    task_id=task.id,
+                    department_id=assigned_dept_id
+                ).first()
+                if not existing:
+                    dept_assignment = TaskDepartmentAssignment(
+                        task_id=task.id,
+                        department_id=assigned_dept_id,
+                        assigned_by_id=current_user.id
+                    )
+                    db.session.add(dept_assignment)
+                    
+                    # Initialize completion status
+                    completion = DepartmentTaskCompletion(
+                        task_id=task.id,
+                        department_id=assigned_dept_id,
+                        is_completed=False
+                    )
+                    db.session.add(completion)
+        
         db.session.commit()
         flash('Task created successfully', 'success')
         return redirect(url_for('dept_head.dashboard'))
     
     members = User.query.filter_by(department_id=dept_id, role='team_member').all()
-    return render_template('dept_head/create_task.html', members=members)
+    departments = Department.query.all()
+    return render_template('dept_head/create_task.html', members=members, departments=departments)
 
 @dept_head_bp.route('/tasks/<int:task_id>/reassign', methods=['GET', 'POST'])
 @login_required
@@ -229,6 +272,72 @@ def forward_task(task_id):
     members = User.query.filter_by(department_id=current_user.department_id, role='team_member').all()
     current_assignments = [a.user_id for a in task.assignments]
     return render_template('dept_head/forward_task.html', task=task, members=members, current_assignments=current_assignments)
+
+@dept_head_bp.route('/tasks/<int:task_id>/assign-departments', methods=['GET', 'POST'])
+@login_required
+@dept_head_required
+def assign_departments(task_id):
+    task = Task.query.get_or_404(task_id)
+    
+    # Department heads can only assign departments to tasks from their department
+    if task.department_id != current_user.department_id:
+        flash('You can only assign departments to tasks from your department', 'error')
+        return redirect(url_for('dept_head.dashboard'))
+    
+    if request.method == 'POST':
+        # Get selected departments
+        assign_to_depts = request.form.getlist('assign_to_dept[]')
+        checked_dept_ids = {int(dept_id) for dept_id in assign_to_depts if dept_id}
+        
+        # Get current department assignments
+        current_dept_assignments = TaskDepartmentAssignment.query.filter_by(task_id=task_id).all()
+        current_dept_ids = {a.department_id for a in current_dept_assignments}
+        
+        # Remove assignments for unchecked departments
+        for assignment in current_dept_assignments:
+            if assignment.department_id not in checked_dept_ids:
+                db.session.delete(assignment)
+                # Also remove completion status if exists
+                completion = DepartmentTaskCompletion.query.filter_by(
+                    task_id=task_id, 
+                    department_id=assignment.department_id
+                ).first()
+                if completion:
+                    db.session.delete(completion)
+        
+        # Add assignments for checked departments that don't have one yet
+        for dept_id in checked_dept_ids:
+            if dept_id not in current_dept_ids:
+                dept_assignment = TaskDepartmentAssignment(
+                    task_id=task.id,
+                    department_id=dept_id,
+                    assigned_by_id=current_user.id
+                )
+                db.session.add(dept_assignment)
+                
+                # Initialize completion status
+                completion = DepartmentTaskCompletion(
+                    task_id=task.id,
+                    department_id=dept_id,
+                    is_completed=False
+                )
+                db.session.add(completion)
+        
+        # Update overall task status based on department completions
+        _update_task_completion_status(task)
+        
+        db.session.commit()
+        flash('Task assigned to departments successfully', 'success')
+        return redirect(url_for('dept_head.dashboard'))
+    
+    departments = Department.query.all()
+    current_dept_assignments = TaskDepartmentAssignment.query.filter_by(task_id=task_id).all()
+    current_dept_ids = {a.department_id for a in current_dept_assignments}
+    
+    return render_template('dept_head/assign_departments.html', 
+                         task=task, 
+                         departments=departments,
+                         current_dept_ids=current_dept_ids)
 
 def _update_task_completion_status(task):
     """Update task status to COMPLETED only if all assigned departments have completed"""

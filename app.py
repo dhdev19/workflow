@@ -52,6 +52,8 @@ def create_app(config_class=Config):
     
     with app.app_context():
         try:
+            # Import all models to ensure they're registered with SQLAlchemy
+            from models import User, Department, Task, TaskAssignment, Subtask, TaskDepartmentAssignment, DepartmentTaskCompletion
             db.create_all()
             
             # Create default admin if not exists (skip in test mode)

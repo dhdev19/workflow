@@ -165,6 +165,7 @@
                     <a href="{{ url_for('dept_head.dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
                     <a href="{{ url_for('dept_head.forward_task', task_id=task.id) }}" class="btn btn-primary">Forward Task</a>
                     <a href="{{ url_for('dept_head.reassign_task', task_id=task.id) }}" class="btn btn-info">Reassign Task</a>
+                    <a href="{{ url_for('dept_head.assign_departments', task_id=task.id) }}" class="btn btn-warning">Assign to Departments</a>
                 {% else %}
                     <a href="{{ url_for('team_member.dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
                 {% endif %}

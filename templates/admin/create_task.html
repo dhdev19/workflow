@@ -32,7 +32,8 @@
                         </div>
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label class="form-label">Department *</label>
+                                <label class="form-label">Primary Department *</label>
+                                <p class="text-muted small mb-1">The department this task belongs to</p>
                                 <select class="form-select" name="department_id" required>
                                     {% for dept in departments %}
                                         <option value="{{ dept.id }}">{{ dept.name }}</option>
@@ -54,23 +55,24 @@
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label">Assign To</label>
+                            <label class="form-label">Assign To (Optional)</label>
+                            <p class="text-muted small">Assign this task to specific users or departments. Leave empty to assign only to the selected department above.</p>
                             <div id="assignments">
                                 <div class="row mb-2">
                                     <div class="col-md-6">
-                                        <select class="form-select" name="assign_type[]">
+                                        <select class="form-select assign-type-select" name="assign_type[]" onchange="filterAssignOptions(this)">
                                             <option value="user">User</option>
                                             <option value="department">Department</option>
                                         </select>
                                     </div>
                                     <div class="col-md-6">
-                                        <select class="form-select" name="assign_to[]">
+                                        <select class="form-select assign-to-select" name="assign_to[]">
                                             <option value="">Select...</option>
                                             {% for user in users %}
-                                                <option value="{{ user.id }}">{{ user.full_name }} ({{ user.role }})</option>
+                                                <option value="{{ user.id }}" data-type="user">{{ user.full_name }} ({{ user.role }})</option>
                                             {% endfor %}
                                             {% for dept in departments %}
-                                                <option value="{{ dept.id }}">Department: {{ dept.name }}</option>
+                                                <option value="{{ dept.id }}" data-type="department">Department: {{ dept.name }}</option>
                                             {% endfor %}
                                         </select>
                                     </div>
@@ -93,26 +95,69 @@
 </div>
 
 <script>
+// Store all options for filtering
+const allUserOptions = [
+    {% for user in users %}
+    {value: "{{ user.id }}", text: {{ (user.full_name + " (" + user.role + ")")|tojson }}, type: "user"},
+    {% endfor %}
+];
+const allDeptOptions = [
+    {% for dept in departments %}
+    {value: "{{ dept.id }}", text: {{ ("Department: " + dept.name)|tojson }}, type: "department"},
+    {% endfor %}
+];
+
+function filterAssignOptions(selectElement) {
+    const row = selectElement.closest('.row');
+    const assignToSelect = row.querySelector('.assign-to-select');
+    const selectedType = selectElement.value;
+    const currentValue = assignToSelect.value;
+    
+    // Clear existing options except the first "Select..." option
+    assignToSelect.innerHTML = '<option value="">Select...</option>';
+    
+    // Add filtered options based on type
+    if (selectedType === 'user') {
+        allUserOptions.forEach(option => {
+            const opt = document.createElement('option');
+            opt.value = option.value;
+            opt.textContent = option.text;
+            opt.setAttribute('data-type', 'user');
+            assignToSelect.appendChild(opt);
+        });
+    } else if (selectedType === 'department') {
+        allDeptOptions.forEach(option => {
+            const opt = document.createElement('option');
+            opt.value = option.value;
+            opt.textContent = option.text;
+            opt.setAttribute('data-type', 'department');
+            assignToSelect.appendChild(opt);
+        });
+    }
+    
+    // Try to restore previous selection if it matches the new type
+    if (currentValue) {
+        const option = assignToSelect.querySelector(`option[value="${currentValue}"]`);
+        if (option && option.getAttribute('data-type') === selectedType) {
+            assignToSelect.value = currentValue;
+        }
+    }
+}
+
 function addAssignment() {
     const container = document.getElementById('assignments');
     const newRow = document.createElement('div');
     newRow.className = 'row mb-2';
     newRow.innerHTML = `
         <div class="col-md-6">
-            <select class="form-select" name="assign_type[]">
+            <select class="form-select assign-type-select" name="assign_type[]" onchange="filterAssignOptions(this)">
                 <option value="user">User</option>
                 <option value="department">Department</option>
             </select>
         </div>
         <div class="col-md-5">
-            <select class="form-select" name="assign_to[]">
+            <select class="form-select assign-to-select" name="assign_to[]">
                 <option value="">Select...</option>
-                {% for user in users %}
-                    <option value="{{ user.id }}">{{ user.full_name }} ({{ user.role }})</option>
-                {% endfor %}
-                {% for dept in departments %}
-                    <option value="{{ dept.id }}">Department: {{ dept.name }}</option>
-                {% endfor %}
             </select>
         </div>
         <div class="col-md-1">
@@ -122,7 +167,17 @@ function addAssignment() {
         </div>
     `;
     container.appendChild(newRow);
+    // Initialize the new row with user options (default)
+    filterAssignOptions(newRow.querySelector('.assign-type-select'));
 }
+
+// Initialize filtering for the first row on page load
+document.addEventListener('DOMContentLoaded', function() {
+    const firstTypeSelect = document.querySelector('.assign-type-select');
+    if (firstTypeSelect) {
+        filterAssignOptions(firstTypeSelect);
+    }
+});
 </script>
 {% endblock %}
 
