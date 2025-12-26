@@ -192,19 +192,35 @@ def forward_task(task_id):
     
     if request.method == 'POST':
         assign_to = request.form.getlist('assign_to[]')
-        for user_id in assign_to:
-            if user_id:
-                member = User.query.get(int(user_id))
-                if member and member.department_id == current_user.department_id:
-                    # Check if assignment already exists
-                    existing = TaskAssignment.query.filter_by(task_id=task_id, user_id=member.id).first()
-                    if not existing:
-                        assignment = TaskAssignment(
-                            task_id=task.id,
-                            user_id=member.id,
-                            assigned_by_id=current_user.id
-                        )
-                        db.session.add(assignment)
+        # Convert to integers
+        checked_user_ids = {int(user_id) for user_id in assign_to if user_id}
+        
+        # Get all team members in the department
+        dept_members = User.query.filter_by(
+            department_id=current_user.department_id, 
+            role='team_member'
+        ).all()
+        
+        # Get current assignments for team members only
+        current_assignments = TaskAssignment.query.filter_by(task_id=task_id).join(
+            User, TaskAssignment.user_id == User.id
+        ).filter(User.role == 'team_member').all()
+        
+        # Remove assignments for unchecked users
+        for assignment in current_assignments:
+            if assignment.user_id not in checked_user_ids:
+                db.session.delete(assignment)
+        
+        # Add assignments for checked users who don't have one yet
+        existing_user_ids = {a.user_id for a in current_assignments}
+        for member in dept_members:
+            if member.id in checked_user_ids and member.id not in existing_user_ids:
+                assignment = TaskAssignment(
+                    task_id=task.id,
+                    user_id=member.id,
+                    assigned_by_id=current_user.id
+                )
+                db.session.add(assignment)
         
         db.session.commit()
         flash('Task forwarded successfully', 'success')
