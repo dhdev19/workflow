@@ -59,6 +59,38 @@
                         {% endfor %}
                     </div>
 
+                    {% if dept_assignments %}
+                    <div class="mb-3">
+                        <strong>Department Assignments:</strong>
+                        <div class="mt-2">
+                            {% for dept_assignment in dept_assignments %}
+                            <div class="d-flex align-items-center mb-2">
+                                <span class="badge {% if dept_completions[dept_assignment.department_id] and dept_completions[dept_assignment.department_id].is_completed %}bg-success{% else %}bg-warning{% endif %} me-2">
+                                    {{ dept_assignment.department.name }}
+                                    {% if dept_completions[dept_assignment.department_id] and dept_completions[dept_assignment.department_id].is_completed %}
+                                        ✓ Completed
+                                    {% else %}
+                                        - In Progress
+                                    {% endif %}
+                                </span>
+                                {% if current_user.role == 'department_head' and current_user.department_id == dept_assignment.department_id %}
+                                <form method="POST" action="{{ url_for('dept_head.mark_department_complete', task_id=task.id) }}" style="display:inline;">
+                                    <button type="submit" class="btn btn-sm {% if dept_completions[dept_assignment.department_id] and dept_completions[dept_assignment.department_id].is_completed %}btn-warning{% else %}btn-success{% endif %}">
+                                        {% if dept_completions[dept_assignment.department_id] and dept_completions[dept_assignment.department_id].is_completed %}
+                                            Mark as Incomplete
+                                        {% else %}
+                                            Mark Department as Complete
+                                        {% endif %}
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <small class="text-muted">Task will be marked as COMPLETED only when all departments have completed their work.</small>
+                    </div>
+                    {% endif %}
+
                     {% if current_user.role == 'team_member' %}
                     <div class="mb-3">
                         <form method="POST" action="{{ url_for('team_member.update_task_status', task_id=task.id) }}">
@@ -128,6 +160,7 @@
                     <a href="{{ url_for('admin.dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
                     <a href="{{ url_for('admin.edit_task', task_id=task.id) }}" class="btn btn-primary">Edit Task</a>
                     <a href="{{ url_for('admin.assign_task', task_id=task.id) }}" class="btn btn-info">Assign Task</a>
+                    <a href="{{ url_for('admin.reassign_task', task_id=task.id) }}" class="btn btn-warning">Reassign to Departments</a>
                 {% elif current_user.role == 'department_head' %}
                     <a href="{{ url_for('dept_head.dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
                     <a href="{{ url_for('dept_head.forward_task', task_id=task.id) }}" class="btn btn-primary">Forward Task</a>

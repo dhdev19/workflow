@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
-from models import db, User, Department, Task, TaskAssignment, Subtask
+from models import db, User, Department, Task, TaskAssignment, Subtask, TaskDepartmentAssignment, DepartmentTaskCompletion
 from extensions import bcrypt
 from utils import dept_head_required
 from datetime import datetime
@@ -229,4 +229,82 @@ def forward_task(task_id):
     members = User.query.filter_by(department_id=current_user.department_id, role='team_member').all()
     current_assignments = [a.user_id for a in task.assignments]
     return render_template('dept_head/forward_task.html', task=task, members=members, current_assignments=current_assignments)
+
+def _update_task_completion_status(task):
+    """Update task status to COMPLETED only if all assigned departments have completed"""
+    dept_assignments = TaskDepartmentAssignment.query.filter_by(task_id=task.id).all()
+    
+    if not dept_assignments:
+        # No department assignments, keep current status logic
+        return
+    
+    # Check if all departments have completed
+    all_completed = True
+    for dept_assignment in dept_assignments:
+        completion = DepartmentTaskCompletion.query.filter_by(
+            task_id=task.id,
+            department_id=dept_assignment.department_id
+        ).first()
+        
+        if not completion or not completion.is_completed:
+            all_completed = False
+            break
+    
+    # Update task status
+    if all_completed and dept_assignments:
+        task.status = 'COMPLETED'
+    elif task.status == 'COMPLETED':
+        # If task was marked complete but not all departments are done, revert to ASSIGNED
+        task.status = 'ASSIGNED'
+
+@dept_head_bp.route('/tasks/<int:task_id>/mark-department-complete', methods=['POST'])
+@login_required
+@dept_head_required
+def mark_department_complete(task_id):
+    task = Task.query.get_or_404(task_id)
+    
+    if not current_user.department_id:
+        flash('You are not assigned to any department', 'error')
+        return redirect(url_for('dept_head.dashboard'))
+    
+    # Check if this department is assigned to the task
+    dept_assignment = TaskDepartmentAssignment.query.filter_by(
+        task_id=task_id,
+        department_id=current_user.department_id
+    ).first()
+    
+    if not dept_assignment:
+        flash('Your department is not assigned to this task', 'error')
+        return redirect(url_for('dept_head.dashboard'))
+    
+    # Get or create completion record
+    completion = DepartmentTaskCompletion.query.filter_by(
+        task_id=task_id,
+        department_id=current_user.department_id
+    ).first()
+    
+    if not completion:
+        completion = DepartmentTaskCompletion(
+            task_id=task.id,
+            department_id=current_user.department_id,
+            is_completed=False
+        )
+        db.session.add(completion)
+    
+    # Toggle completion status
+    completion.is_completed = not completion.is_completed
+    if completion.is_completed:
+        completion.completed_at = datetime.utcnow()
+        completion.completed_by_id = current_user.id
+        flash('Your department has been marked as completed for this task', 'success')
+    else:
+        completion.completed_at = None
+        completion.completed_by_id = None
+        flash('Your department completion status has been removed', 'info')
+    
+    # Update overall task status
+    _update_task_completion_status(task)
+    
+    db.session.commit()
+    return redirect(url_for('tasks.view_task', task_id=task_id))
 

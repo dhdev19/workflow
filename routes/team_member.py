@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
-from models import db, Task, TaskAssignment, Subtask
+from models import db, Task, TaskAssignment, Subtask, TaskDepartmentAssignment, DepartmentTaskCompletion
 from datetime import datetime
 
 team_member_bp = Blueprint('team_member', __name__)
@@ -61,6 +61,15 @@ def update_task_status(task_id):
         return redirect(url_for('team_member.dashboard'))
     
     new_status = request.form.get('status')
+    
+    # Check if task has department assignments
+    dept_assignments = TaskDepartmentAssignment.query.filter_by(task_id=task_id).all()
+    if dept_assignments and new_status == 'COMPLETED':
+        # If task has department assignments, team members cannot mark it as COMPLETED
+        # Only when all departments complete will it be marked as COMPLETED
+        flash('This task is assigned to multiple departments. Task will be marked as COMPLETED only when all departments have completed their work.', 'warning')
+        return redirect(url_for('tasks.view_task', task_id=task_id))
+    
     task.status = new_status
     db.session.commit()
     flash('Task status updated successfully', 'success')

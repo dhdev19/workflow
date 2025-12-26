@@ -52,6 +52,8 @@ class Task(db.Model):
     creator = relationship('User', foreign_keys=[created_by_id], back_populates='created_tasks')
     assignments = relationship('TaskAssignment', back_populates='task', cascade='all, delete-orphan')
     subtasks = relationship('Subtask', back_populates='task', cascade='all, delete-orphan')
+    department_assignments = relationship('TaskDepartmentAssignment', back_populates='task', cascade='all, delete-orphan')
+    department_completions = relationship('DepartmentTaskCompletion', back_populates='task', cascade='all, delete-orphan')
     
     def __repr__(self):
         return f'<Task {self.task_name}>'
@@ -85,4 +87,39 @@ class Subtask(db.Model):
     
     def __repr__(self):
         return f'<Subtask {self.subtask_name}>'
+
+class TaskDepartmentAssignment(db.Model):
+    """Tracks which departments are assigned to work on a task"""
+    id = db.Column(db.Integer, primary_key=True)
+    task_id = db.Column(db.Integer, db.ForeignKey('task.id'), nullable=False)
+    department_id = db.Column(db.Integer, db.ForeignKey('department.id'), nullable=False)
+    assigned_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    assigned_by_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    
+    task = relationship('Task', back_populates='department_assignments')
+    department = relationship('Department')
+    assigned_by = relationship('User', foreign_keys=[assigned_by_id])
+    
+    __table_args__ = (db.UniqueConstraint('task_id', 'department_id', name='unique_task_department'),)
+    
+    def __repr__(self):
+        return f'<TaskDepartmentAssignment task_id={self.task_id} department_id={self.department_id}>'
+
+class DepartmentTaskCompletion(db.Model):
+    """Tracks completion status for each department assigned to a task"""
+    id = db.Column(db.Integer, primary_key=True)
+    task_id = db.Column(db.Integer, db.ForeignKey('task.id'), nullable=False)
+    department_id = db.Column(db.Integer, db.ForeignKey('department.id'), nullable=False)
+    is_completed = db.Column(db.Boolean, default=False, nullable=False)
+    completed_at = db.Column(db.DateTime, nullable=True)
+    completed_by_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    
+    task = relationship('Task', back_populates='department_completions')
+    department = relationship('Department')
+    completed_by = relationship('User', foreign_keys=[completed_by_id])
+    
+    __table_args__ = (db.UniqueConstraint('task_id', 'department_id', name='unique_task_department_completion'),)
+    
+    def __repr__(self):
+        return f'<DepartmentTaskCompletion task_id={self.task_id} department_id={self.department_id} is_completed={self.is_completed}>'
 

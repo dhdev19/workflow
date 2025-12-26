@@ -1,6 +1,6 @@
 from flask import Blueprint, request, redirect, url_for, flash, jsonify, render_template
 from flask_login import login_required, current_user
-from models import db, Task, Subtask
+from models import db, Task, Subtask, TaskDepartmentAssignment, DepartmentTaskCompletion
 from utils import can_access_task
 from datetime import datetime
 
@@ -68,5 +68,19 @@ def view_task(task_id):
         flash('You do not have permission to access this task', 'error')
         return redirect(url_for('index'))
     
-    return render_template('shared/task_detail.html', task=task, datetime=datetime)
+    # Get department assignments and completion status
+    dept_assignments = TaskDepartmentAssignment.query.filter_by(task_id=task_id).all()
+    dept_completions = {}
+    for dept_assignment in dept_assignments:
+        completion = DepartmentTaskCompletion.query.filter_by(
+            task_id=task_id,
+            department_id=dept_assignment.department_id
+        ).first()
+        dept_completions[dept_assignment.department_id] = completion
+    
+    return render_template('shared/task_detail.html', 
+                         task=task, 
+                         datetime=datetime,
+                         dept_assignments=dept_assignments,
+                         dept_completions=dept_completions)
 
