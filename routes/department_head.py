@@ -229,8 +229,25 @@ def reassign_task(task_id):
 def forward_task(task_id):
     task = Task.query.get_or_404(task_id)
     
-    if task.department_id != current_user.department_id:
-        flash('You can only forward tasks from your department', 'error')
+    if not current_user.department_id:
+        flash('You are not assigned to any department', 'error')
+        return redirect(url_for('dept_head.dashboard'))
+    
+    # Check if task belongs to user's department OR is assigned to user's department
+    can_access = False
+    if task.department_id == current_user.department_id:
+        can_access = True
+    else:
+        # Check if task is assigned to user's department via TaskDepartmentAssignment
+        dept_assignment = TaskDepartmentAssignment.query.filter_by(
+            task_id=task_id,
+            department_id=current_user.department_id
+        ).first()
+        if dept_assignment:
+            can_access = True
+    
+    if not can_access:
+        flash('You can only forward tasks from your department or tasks assigned to your department', 'error')
         return redirect(url_for('dept_head.dashboard'))
     
     if request.method == 'POST':
@@ -279,9 +296,25 @@ def forward_task(task_id):
 def assign_departments(task_id):
     task = Task.query.get_or_404(task_id)
     
-    # Department heads can only assign departments to tasks from their department
-    if task.department_id != current_user.department_id:
-        flash('You can only assign departments to tasks from your department', 'error')
+    if not current_user.department_id:
+        flash('You are not assigned to any department', 'error')
+        return redirect(url_for('dept_head.dashboard'))
+    
+    # Department heads can assign departments to tasks from their department OR tasks assigned to their department
+    can_access = False
+    if task.department_id == current_user.department_id:
+        can_access = True
+    else:
+        # Check if task is assigned to user's department via TaskDepartmentAssignment
+        dept_assignment = TaskDepartmentAssignment.query.filter_by(
+            task_id=task_id,
+            department_id=current_user.department_id
+        ).first()
+        if dept_assignment:
+            can_access = True
+    
+    if not can_access:
+        flash('You can only assign departments to tasks from your department or tasks assigned to your department', 'error')
         return redirect(url_for('dept_head.dashboard'))
     
     if request.method == 'POST':
