@@ -58,8 +58,13 @@
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label">Assign To Departments (Optional)</label>
-                            <p class="text-muted small mb-2">Select departments to work on this task. Task will be marked as COMPLETED only when all selected departments have completed their work.</p>
+                            <label class="form-label">
+                                <i class="bi bi-building"></i> Involve Other Departments (Optional)
+                            </label>
+                            <p class="text-muted small mb-2">
+                                <strong>Collaborate with other departments:</strong> Select departments to work on this task together. 
+                                The task will be marked as COMPLETED only when all selected departments have completed their work.
+                            </p>
                             {% for dept in departments %}
                             <div class="form-check">
                                 <input class="form-check-input" type="checkbox" name="assign_to_dept[]" 

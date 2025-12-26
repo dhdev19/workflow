@@ -56,6 +56,11 @@
                                     </td>
                                     <td>
                                         <span class="badge bg-secondary">{{ task.status }}</span>
+                                        {% if task.department_assignments|length > 0 %}
+                                            <span class="badge bg-success ms-1" title="Involves {{ task.department_assignments|length }} department(s)">
+                                                <i class="bi bi-building"></i> {{ task.department_assignments|length }} Dept(s)
+                                            </span>
+                                        {% endif %}
                                     </td>
                                     <td>
                                         {% for assignment in task.assignments[:3] %}
@@ -67,13 +72,16 @@
                                     </td>
                                     <td>{{ task.client_name or 'N/A' }}</td>
                                     <td>
-                                        <a href="{{ url_for('tasks.view_task', task_id=task.id) }}" class="btn btn-sm btn-outline-primary">
+                                        <a href="{{ url_for('tasks.view_task', task_id=task.id) }}" class="btn btn-sm btn-outline-primary" title="View Task">
                                             <i class="bi bi-eye"></i>
                                         </a>
-                                        <a href="{{ url_for('dept_head.forward_task', task_id=task.id) }}" class="btn btn-sm btn-outline-info">
+                                        <a href="{{ url_for('dept_head.forward_task', task_id=task.id) }}" class="btn btn-sm btn-outline-info" title="Forward to Team Members">
                                             <i class="bi bi-forward"></i>
                                         </a>
-                                        <a href="{{ url_for('dept_head.reassign_task', task_id=task.id) }}" class="btn btn-sm btn-outline-warning">
+                                        <a href="{{ url_for('dept_head.assign_departments', task_id=task.id) }}" class="btn btn-sm btn-outline-success" title="Involve Other Departments">
+                                            <i class="bi bi-building"></i>
+                                        </a>
+                                        <a href="{{ url_for('dept_head.reassign_task', task_id=task.id) }}" class="btn btn-sm btn-outline-warning" title="Reassign to Another Department Head">
                                             <i class="bi bi-arrow-left-right"></i>
                                         </a>
                                     </td>

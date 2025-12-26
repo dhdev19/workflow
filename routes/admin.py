@@ -107,6 +107,59 @@ def add_department():
     
     return render_template('admin/add_department.html')
 
+@admin_bp.route('/departments/<int:dept_id>/edit', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def edit_department(dept_id):
+    dept = Department.query.get_or_404(dept_id)
+    
+    if request.method == 'POST':
+        name = request.form.get('name')
+        description = request.form.get('description', '')
+        
+        # Check if name already exists (excluding current department)
+        existing_dept = Department.query.filter_by(name=name).first()
+        if existing_dept and existing_dept.id != dept_id:
+            flash('Department with this name already exists', 'error')
+            return redirect(url_for('admin.edit_department', dept_id=dept_id))
+        
+        # Update department details
+        dept.name = name
+        dept.description = description
+        
+        # Get selected member IDs
+        member_ids = request.form.getlist('member_ids[]')
+        selected_member_ids = {int(mid) for mid in member_ids if mid}
+        
+        # Get current members
+        current_members = User.query.filter_by(department_id=dept_id).all()
+        current_member_ids = {m.id for m in current_members}
+        
+        # Remove members that are unchecked
+        for member in current_members:
+            if member.id not in selected_member_ids:
+                member.department_id = None
+        
+        # Add new members
+        for member_id in selected_member_ids:
+            if member_id not in current_member_ids:
+                member = User.query.get(member_id)
+                if member:
+                    member.department_id = dept_id
+        
+        db.session.commit()
+        flash('Department updated successfully', 'success')
+        return redirect(url_for('admin.departments'))
+    
+    # Get all users for selection
+    all_users = User.query.filter(User.role.in_(['department_head', 'team_member'])).all()
+    current_member_ids = {m.id for m in dept.members}
+    
+    return render_template('admin/edit_department.html', 
+                         department=dept, 
+                         all_users=all_users,
+                         current_member_ids=current_member_ids)
+
 @admin_bp.route('/departments/<int:dept_id>/delete', methods=['POST'])
 @login_required
 @admin_required
