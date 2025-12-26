@@ -399,6 +399,42 @@ def _update_task_completion_status(task):
         # If task was marked complete but not all departments are done, revert to ASSIGNED
         task.status = 'ASSIGNED'
 
+@dept_head_bp.route('/tasks/<int:task_id>/update-status', methods=['POST'])
+@login_required
+@dept_head_required
+def update_task_status(task_id):
+    task = Task.query.get_or_404(task_id)
+    
+    if not current_user.department_id:
+        flash('You are not assigned to any department', 'error')
+        return redirect(url_for('dept_head.dashboard'))
+    
+    # Check if task belongs to user's department OR is assigned to user's department
+    can_access = False
+    if task.department_id == current_user.department_id:
+        can_access = True
+    else:
+        # Check if task is assigned to user's department via TaskDepartmentAssignment
+        dept_assignment = TaskDepartmentAssignment.query.filter_by(
+            task_id=task_id,
+            department_id=current_user.department_id
+        ).first()
+        if dept_assignment:
+            can_access = True
+    
+    if not can_access:
+        flash('You can only update tasks from your department or tasks assigned to your department', 'error')
+        return redirect(url_for('dept_head.dashboard'))
+    
+    new_status = request.form.get('status')
+    task.status = new_status
+    
+    # If setting to COMPLETED and task has department assignments, 
+    # don't override with department completion logic - department head's direct completion takes precedence
+    db.session.commit()
+    flash('Task status updated successfully', 'success')
+    return redirect(url_for('tasks.view_task', task_id=task_id))
+
 @dept_head_bp.route('/tasks/<int:task_id>/mark-department-complete', methods=['POST'])
 @login_required
 @dept_head_required

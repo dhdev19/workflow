@@ -62,16 +62,30 @@ def update_task_status(task_id):
     
     new_status = request.form.get('status')
     
-    # Check if task has department assignments
+    task.status = new_status
+    
+    # If task has department assignments and status is COMPLETED,
+    # note that department completion logic may override this
     dept_assignments = TaskDepartmentAssignment.query.filter_by(task_id=task_id).all()
     if dept_assignments and new_status == 'COMPLETED':
-        # If task has department assignments, team members cannot mark it as COMPLETED
-        # Only when all departments complete will it be marked as COMPLETED
-        flash('This task is assigned to multiple departments. Task will be marked as COMPLETED only when all departments have completed their work.', 'warning')
-        return redirect(url_for('tasks.view_task', task_id=task_id))
+        # Check if all departments have completed
+        all_depts_completed = True
+        for dept_assignment in dept_assignments:
+            completion = DepartmentTaskCompletion.query.filter_by(
+                task_id=task_id,
+                department_id=dept_assignment.department_id
+            ).first()
+            if not completion or not completion.is_completed:
+                all_depts_completed = False
+                break
+        
+        if not all_depts_completed:
+            flash('Task marked as complete. Note: This task involves multiple departments. The overall completion status will be updated when all departments finish their work.', 'info')
+        else:
+            flash('Task status updated successfully', 'success')
+    else:
+        flash('Task status updated successfully', 'success')
     
-    task.status = new_status
     db.session.commit()
-    flash('Task status updated successfully', 'success')
     return redirect(url_for('team_member.dashboard'))
 

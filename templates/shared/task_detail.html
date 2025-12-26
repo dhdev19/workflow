@@ -102,6 +102,31 @@
                                 <option value="Review with ADMIN" {% if task.status == 'Review with ADMIN' %}selected{% endif %}>Review with ADMIN</option>
                                 <option value="Waiting for approval from Client" {% if task.status == 'Waiting for approval from Client' %}selected{% endif %}>Waiting for approval from Client</option>
                             </select>
+                            {% if dept_assignments %}
+                            <small class="text-muted d-block mt-1">
+                                <i class="bi bi-info-circle"></i> Note: This task involves multiple departments. It will be marked as COMPLETED only when all departments have finished their work.
+                            </small>
+                            {% endif %}
+                        </form>
+                    </div>
+                    {% endif %}
+
+                    {% if current_user.role == 'department_head' %}
+                    <div class="mb-3">
+                        <form method="POST" action="{{ url_for('dept_head.update_task_status', task_id=task.id) }}">
+                            <label class="form-label"><strong>Update Task Status:</strong></label>
+                            <select class="form-select d-inline-block w-auto" name="status" onchange="this.form.submit()">
+                                <option value="ASSIGNED" {% if task.status == 'ASSIGNED' %}selected{% endif %}>ASSIGNED</option>
+                                <option value="PENDING" {% if task.status == 'PENDING' %}selected{% endif %}>PENDING</option>
+                                <option value="COMPLETED" {% if task.status == 'COMPLETED' %}selected{% endif %}>COMPLETED</option>
+                                <option value="Review with ADMIN" {% if task.status == 'Review with ADMIN' %}selected{% endif %}>Review with ADMIN</option>
+                                <option value="Waiting for approval from Client" {% if task.status == 'Waiting for approval from Client' %}selected{% endif %}>Waiting for approval from Client</option>
+                            </select>
+                            {% if dept_assignments %}
+                            <small class="text-muted d-block mt-1">
+                                <i class="bi bi-info-circle"></i> Note: This task involves multiple departments. Setting status to COMPLETED will mark it complete regardless of department completion status.
+                            </small>
+                            {% endif %}
                         </form>
                     </div>
                     {% endif %}
