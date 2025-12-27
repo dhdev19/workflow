@@ -155,32 +155,51 @@ def create_task():
         
         # Assign to departments (including own department)
         assign_to_depts = request.form.getlist('assign_to_dept[]')
-        for dept_id_str in assign_to_depts:
-            if dept_id_str:
-                assigned_dept_id = int(dept_id_str)
-                # Check if assignment already exists
-                existing = TaskDepartmentAssignment.query.filter_by(
-                    task_id=task.id,
-                    department_id=assigned_dept_id
-                ).first()
-                if not existing:
-                    dept_assignment = TaskDepartmentAssignment(
-                        task_id=task.id,
-                        department_id=assigned_dept_id,
-                        assigned_by_id=current_user.id
-                    )
-                    db.session.add(dept_assignment)
-                    
-                    # Initialize completion status
-                    completion = DepartmentTaskCompletion(
-                        task_id=task.id,
-                        department_id=assigned_dept_id,
-                        is_completed=False
-                    )
-                    db.session.add(completion)
+        selected_dept_ids = {int(dept_id_str) for dept_id_str in assign_to_depts if dept_id_str}
         
-        db.session.commit()
-        flash('Task created successfully', 'success')
+        # Always assign to own department immediately (no approval needed)
+        if dept_id in selected_dept_ids:
+            existing = TaskDepartmentAssignment.query.filter_by(
+                task_id=task.id,
+                department_id=dept_id
+            ).first()
+            if not existing:
+                dept_assignment = TaskDepartmentAssignment(
+                    task_id=task.id,
+                    department_id=dept_id,
+                    assigned_by_id=current_user.id
+                )
+                db.session.add(dept_assignment)
+                
+                # Initialize completion status
+                completion = DepartmentTaskCompletion(
+                    task_id=task.id,
+                    department_id=dept_id,
+                    is_completed=False
+                )
+                db.session.add(completion)
+        
+        # Check for other departments (require approval)
+        other_dept_ids = selected_dept_ids - {dept_id}
+        
+        if other_dept_ids:
+            # Create approval request for other departments only
+            # Store all selected departments (own + others) so when approved, all are assigned
+            approval_request = TaskApprovalRequest(
+                task_id=task.id,
+                request_type='assign_departments',
+                requested_by_id=current_user.id,
+                requested_department_ids=json.dumps(list(selected_dept_ids)),  # All selected (own + others)
+                status='PENDING'
+            )
+            db.session.add(approval_request)
+            db.session.commit()
+            flash('Task created successfully. Request to involve other departments submitted. Waiting for admin approval.', 'info')
+        else:
+            # No other departments, just commit
+            db.session.commit()
+            flash('Task created successfully', 'success')
+        
         return redirect(url_for('dept_head.dashboard'))
     
     members = User.query.filter_by(department_id=dept_id, role='team_member').all()
