@@ -48,6 +48,7 @@ def dashboard():
     status = request.args.get('status', '')
     department_id = request.args.get('department_id', '')
     client_name = request.args.get('client_name', '')
+    priority = request.args.get('priority', '')
     
     if task_name:
         tasks_query = tasks_query.filter(Task.task_name.ilike(f'%{task_name}%'))
@@ -57,6 +58,8 @@ def dashboard():
         tasks_query = tasks_query.filter(Task.department_id == department_id)
     if client_name:
         tasks_query = tasks_query.filter(Task.client_name.ilike(f'%{client_name}%'))
+    if priority:
+        tasks_query = tasks_query.filter(Task.priority == priority)
     
     tasks = tasks_query.order_by(Task.created_at.desc()).all()
     departments = Department.query.all()
@@ -82,7 +85,8 @@ def dashboard():
                              'task_name': task_name,
                              'status': status,
                              'department_id': department_id,
-                             'client_name': client_name
+                             'client_name': client_name,
+                             'priority': priority
                          })
 
 @admin_bp.route('/departments')
