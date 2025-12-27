@@ -94,7 +94,13 @@ def dashboard():
 @admin_required
 def departments():
     departments = Department.query.all()
-    return render_template('admin/departments.html', departments=departments)
+    # Get department heads separately since the head relationship is viewonly with complex join
+    dept_heads = {}
+    for dept in departments:
+        head = User.query.filter_by(department_id=dept.id, role='department_head').first()
+        if head:
+            dept_heads[dept.id] = head
+    return render_template('admin/departments.html', departments=departments, dept_heads=dept_heads)
 
 @admin_bp.route('/departments/add', methods=['GET', 'POST'])
 @login_required
