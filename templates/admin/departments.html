@@ -58,9 +58,9 @@
                                 <td>{{ dept.name }}</td>
                                 <td>{{ dept.description or 'N/A' }}</td>
                                 <td>
-                                    {% if dept_heads.get(dept.id) %}
+                                    {% if dept_heads and dept_heads.get(dept.id) %}
                                         {% set head = dept_heads[dept.id] %}
-                                        <span class="badge bg-primary">{{ head.full_name }}</span>
+                                        <strong>{{ head.full_name }}</strong>
                                         <br><small class="text-muted">{{ head.email }}</small>
                                     {% else %}
                                         <span class="text-muted">No Department Head</span>
