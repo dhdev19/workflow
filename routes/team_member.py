@@ -10,8 +10,37 @@ team_member_bp = Blueprint('team_member', __name__)
 def dashboard():
     # Get tasks assigned to current user
     assigned_task_ids = [a.task_id for a in TaskAssignment.query.filter_by(user_id=current_user.id).all()]
-    tasks = Task.query.filter(Task.id.in_(assigned_task_ids)).order_by(Task.created_at.desc()).all()
-    return render_template('team_member/dashboard.html', tasks=tasks)
+    
+    if not assigned_task_ids:
+        tasks = []
+    else:
+        tasks_query = Task.query.filter(Task.id.in_(assigned_task_ids))
+        
+        # Apply filters
+        task_name = request.args.get('task_name', '')
+        status = request.args.get('status', '')
+        priority = request.args.get('priority', '')
+        client_name = request.args.get('client_name', '')
+        
+        if task_name:
+            tasks_query = tasks_query.filter(Task.task_name.ilike(f'%{task_name}%'))
+        if status:
+            tasks_query = tasks_query.filter(Task.status == status)
+        if priority:
+            tasks_query = tasks_query.filter(Task.priority == priority)
+        if client_name:
+            tasks_query = tasks_query.filter(Task.client_name.ilike(f'%{client_name}%'))
+        
+        tasks = tasks_query.order_by(Task.created_at.desc()).all()
+    
+    return render_template('team_member/dashboard.html', 
+                         tasks=tasks,
+                         filters={
+                             'task_name': request.args.get('task_name', ''),
+                             'status': request.args.get('status', ''),
+                             'priority': request.args.get('priority', ''),
+                             'client_name': request.args.get('client_name', '')
+                         })
 
 @team_member_bp.route('/tasks/create', methods=['GET', 'POST'])
 @login_required

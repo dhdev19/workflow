@@ -23,19 +23,43 @@ def dashboard():
     # Get task IDs assigned to this department via TaskDepartmentAssignment
     assigned_task_ids = [a.task_id for a in TaskDepartmentAssignment.query.filter_by(department_id=dept_id).all()]
     
-    # Query tasks: either primary department matches OR task is assigned to this department
+    # Base query: either primary department matches OR task is assigned to this department
     if assigned_task_ids:
-        tasks = Task.query.filter(
+        tasks_query = Task.query.filter(
             or_(
                 Task.department_id == dept_id,
                 Task.id.in_(assigned_task_ids)
             )
-        ).order_by(Task.created_at.desc()).all()
+        )
     else:
         # If no assigned tasks, just get primary department tasks
-        tasks = Task.query.filter_by(department_id=dept_id).order_by(Task.created_at.desc()).all()
+        tasks_query = Task.query.filter_by(department_id=dept_id)
     
-    return render_template('dept_head/dashboard.html', tasks=tasks)
+    # Apply filters
+    task_name = request.args.get('task_name', '')
+    status = request.args.get('status', '')
+    priority = request.args.get('priority', '')
+    client_name = request.args.get('client_name', '')
+    
+    if task_name:
+        tasks_query = tasks_query.filter(Task.task_name.ilike(f'%{task_name}%'))
+    if status:
+        tasks_query = tasks_query.filter(Task.status == status)
+    if priority:
+        tasks_query = tasks_query.filter(Task.priority == priority)
+    if client_name:
+        tasks_query = tasks_query.filter(Task.client_name.ilike(f'%{client_name}%'))
+    
+    tasks = tasks_query.order_by(Task.created_at.desc()).all()
+    
+    return render_template('dept_head/dashboard.html', 
+                         tasks=tasks,
+                         filters={
+                             'task_name': task_name,
+                             'status': status,
+                             'priority': priority,
+                             'client_name': client_name
+                         })
 
 @dept_head_bp.route('/team-members')
 @login_required

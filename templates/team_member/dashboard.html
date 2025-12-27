@@ -13,6 +13,48 @@
                 </a>
             </div>
 
+            <!-- Filters -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <form method="GET" action="{{ url_for('team_member.dashboard') }}" class="row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label">Task Name</label>
+                            <input type="text" class="form-control" name="task_name" value="{{ filters.task_name|default('') }}">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Status</label>
+                            <select class="form-select" name="status">
+                                <option value="">All</option>
+                                <option value="COMPLETED" {% if filters.status|default('') == 'COMPLETED' %}selected{% endif %}>COMPLETED</option>
+                                <option value="PENDING" {% if filters.status|default('') == 'PENDING' %}selected{% endif %}>PENDING</option>
+                                <option value="ASSIGNED" {% if filters.status|default('') == 'ASSIGNED' %}selected{% endif %}>ASSIGNED</option>
+                                <option value="Review with ADMIN" {% if filters.status|default('') == 'Review with ADMIN' %}selected{% endif %}>Review with ADMIN</option>
+                                <option value="Waiting for approval from Client" {% if filters.status|default('') == 'Waiting for approval from Client' %}selected{% endif %}>Waiting for approval</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Priority</label>
+                            <select class="form-select" name="priority">
+                                <option value="">All</option>
+                                <option value="URGENT" {% if filters.priority|default('') == 'URGENT' %}selected{% endif %}>URGENT</option>
+                                <option value="IMPORTANT" {% if filters.priority|default('') == 'IMPORTANT' %}selected{% endif %}>IMPORTANT</option>
+                                <option value="DAILY TASK" {% if filters.priority|default('') == 'DAILY TASK' %}selected{% endif %}>DAILY TASK</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Client Name</label>
+                            <input type="text" class="form-control" name="client_name" value="{{ filters.client_name|default('') }}">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">&nbsp;</label>
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="bi bi-search"></i> Filter
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
             <div class="card">
                 <div class="card-body">
                     <div class="table-responsive">
