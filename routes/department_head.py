@@ -1,10 +1,11 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
-from models import db, User, Department, Task, TaskAssignment, Subtask, TaskDepartmentAssignment, DepartmentTaskCompletion
+from models import db, User, Department, Task, TaskAssignment, Subtask, TaskDepartmentAssignment, DepartmentTaskCompletion, TaskApprovalRequest
 from extensions import bcrypt
 from utils import dept_head_required
 from datetime import datetime
 from sqlalchemy import or_
+import json
 
 dept_head_bp = Blueprint('dept_head', __name__)
 
@@ -196,6 +197,13 @@ def reassign_task(task_id):
         flash('You can only reassign tasks from your department', 'error')
         return redirect(url_for('dept_head.dashboard'))
     
+    # Check if there's already a pending approval request
+    pending_request = TaskApprovalRequest.query.filter_by(
+        task_id=task_id,
+        request_type='reassign',
+        status='PENDING'
+    ).first()
+    
     if request.method == 'POST':
         new_dept_head_id = request.form.get('new_dept_head_id')
         new_dept_head = User.query.get(new_dept_head_id)
@@ -204,24 +212,34 @@ def reassign_task(task_id):
             flash('Invalid department head selected', 'error')
             return redirect(url_for('dept_head.reassign_task', task_id=task_id))
         
-        # Update task department
-        task.department_id = new_dept_head.department_id
+        if new_dept_head.department_id == task.department_id:
+            flash('Task is already assigned to this department', 'error')
+            return redirect(url_for('dept_head.reassign_task', task_id=task_id))
         
-        # Remove old assignments and assign to new department head
-        TaskAssignment.query.filter_by(task_id=task_id).delete()
-        assignment = TaskAssignment(
-            task_id=task.id,
-            user_id=new_dept_head.id,
-            assigned_by_id=current_user.id
-        )
-        db.session.add(assignment)
+        # Create approval request instead of directly reassigning
+        if pending_request:
+            # Update existing request
+            pending_request.new_dept_head_id = new_dept_head.id
+            pending_request.updated_at = datetime.utcnow()
+        else:
+            approval_request = TaskApprovalRequest(
+                task_id=task.id,
+                request_type='reassign',
+                requested_by_id=current_user.id,
+                new_dept_head_id=new_dept_head.id,
+                status='PENDING'
+            )
+            db.session.add(approval_request)
+        
         db.session.commit()
-        flash('Task reassigned successfully', 'success')
+        flash('Reassignment request submitted. Waiting for admin approval.', 'info')
         return redirect(url_for('dept_head.dashboard'))
     
-    # Get all department heads
-    dept_heads = User.query.filter_by(role='department_head').all()
-    return render_template('dept_head/reassign_task.html', task=task, dept_heads=dept_heads)
+    # Get all department heads (excluding current department)
+    dept_heads = User.query.filter_by(role='department_head').filter(
+        User.department_id != task.department_id
+    ).all()
+    return render_template('dept_head/reassign_task.html', task=task, dept_heads=dept_heads, pending_request=pending_request)
 
 @dept_head_bp.route('/tasks/<int:task_id>/forward', methods=['GET', 'POST'])
 @login_required
@@ -326,7 +344,7 @@ def assign_departments(task_id):
         current_dept_assignments = TaskDepartmentAssignment.query.filter_by(task_id=task_id).all()
         current_dept_ids = {a.department_id for a in current_dept_assignments}
         
-        # Remove assignments for unchecked departments
+        # Remove assignments for unchecked departments (no approval needed for removal)
         for assignment in current_dept_assignments:
             if assignment.department_id not in checked_dept_ids:
                 db.session.delete(assignment)
@@ -338,39 +356,58 @@ def assign_departments(task_id):
                 if completion:
                     db.session.delete(completion)
         
-        # Add assignments for checked departments that don't have one yet
-        for dept_id in checked_dept_ids:
-            if dept_id not in current_dept_ids:
-                dept_assignment = TaskDepartmentAssignment(
-                    task_id=task.id,
-                    department_id=dept_id,
-                    assigned_by_id=current_user.id
-                )
-                db.session.add(dept_assignment)
-                
-                # Initialize completion status
-                completion = DepartmentTaskCompletion(
-                    task_id=task.id,
-                    department_id=dept_id,
-                    is_completed=False
-                )
-                db.session.add(completion)
+        # Check for new departments to add (requires approval)
+        new_dept_ids = checked_dept_ids - current_dept_ids
         
-        # Update overall task status based on department completions
-        _update_task_completion_status(task)
+        if new_dept_ids:
+            # Check if there's already a pending approval request
+            pending_request = TaskApprovalRequest.query.filter_by(
+                task_id=task_id,
+                request_type='assign_departments',
+                status='PENDING'
+            ).first()
+            
+            if pending_request:
+                # Update existing request with new department IDs
+                pending_request.requested_department_ids = json.dumps(list(checked_dept_ids))
+                pending_request.updated_at = datetime.utcnow()
+            else:
+                # Create new approval request
+                approval_request = TaskApprovalRequest(
+                    task_id=task.id,
+                    request_type='assign_departments',
+                    requested_by_id=current_user.id,
+                    requested_department_ids=json.dumps(list(checked_dept_ids)),
+                    status='PENDING'
+                )
+                db.session.add(approval_request)
+            
+            db.session.commit()
+            flash('Request to add departments submitted. Waiting for admin approval. Removed departments have been unassigned.', 'info')
+        else:
+            # No new departments to add, just removals (already processed above)
+            _update_task_completion_status(task)
+            db.session.commit()
+            flash('Department assignments updated successfully', 'success')
         
-        db.session.commit()
-        flash('Task assigned to departments successfully', 'success')
         return redirect(url_for('dept_head.dashboard'))
     
     departments = Department.query.all()
     current_dept_assignments = TaskDepartmentAssignment.query.filter_by(task_id=task_id).all()
     current_dept_ids = {a.department_id for a in current_dept_assignments}
     
+    # Check for pending approval request
+    pending_request = TaskApprovalRequest.query.filter_by(
+        task_id=task_id,
+        request_type='assign_departments',
+        status='PENDING'
+    ).first()
+    
     return render_template('dept_head/assign_departments.html', 
                          task=task, 
                          departments=departments,
-                         current_dept_ids=current_dept_ids)
+                         current_dept_ids=current_dept_ids,
+                         pending_request=pending_request)
 
 def _update_task_completion_status(task):
     """Update task status to COMPLETED only if all assigned departments have completed"""

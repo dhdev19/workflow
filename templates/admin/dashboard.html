@@ -28,6 +28,15 @@
                             <i class="bi bi-bar-chart"></i> Analytics
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin.approvals') }}">
+                            <i class="bi bi-check-circle"></i> Approvals
+                            {% set pending_count = pending_approvals|default(0) %}
+                            {% if pending_count > 0 %}
+                            <span class="badge bg-danger">{{ pending_count }}</span>
+                            {% endif %}
+                        </a>
+                    </li>
                 </ul>
             </div>
         </nav>

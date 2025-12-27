@@ -1,10 +1,11 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import login_required, current_user
-from models import db, User, Department, Task, TaskAssignment, Subtask, TaskDepartmentAssignment, DepartmentTaskCompletion
+from models import db, User, Department, Task, TaskAssignment, Subtask, TaskDepartmentAssignment, DepartmentTaskCompletion, TaskApprovalRequest
 from extensions import bcrypt
 from utils import admin_required
 from datetime import datetime
 from sqlalchemy import or_
+import json
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -64,6 +65,9 @@ def dashboard():
     total_tasks = Task.query.count()
     completed_tasks = Task.query.filter_by(status='COMPLETED').count()
     pending_tasks = Task.query.filter_by(status='PENDING').count()
+    
+    # Pending approvals count
+    pending_approvals = TaskApprovalRequest.query.filter_by(status='PENDING').count()
     urgent_tasks = Task.query.filter_by(priority='URGENT').count()
     
     return render_template('admin/dashboard.html', 
@@ -73,6 +77,7 @@ def dashboard():
                          completed_tasks=completed_tasks,
                          pending_tasks=pending_tasks,
                          urgent_tasks=urgent_tasks,
+                         pending_approvals=pending_approvals,
                          filters={
                              'task_name': task_name,
                              'status': status,
@@ -433,6 +438,107 @@ def reassign_task(task_id):
                          task=task, 
                          departments=departments,
                          current_dept_ids=current_dept_ids)
+
+@admin_bp.route('/approvals')
+@login_required
+@admin_required
+def approvals():
+    """View all pending approval requests"""
+    pending_requests = TaskApprovalRequest.query.filter_by(status='PENDING').order_by(TaskApprovalRequest.created_at.desc()).all()
+    departments = Department.query.all()
+    return render_template('admin/approvals.html', requests=pending_requests, departments=departments)
+
+@admin_bp.route('/approvals/<int:request_id>/approve', methods=['POST'])
+@login_required
+@admin_required
+def approve_request(request_id):
+    """Approve a pending request"""
+    approval_request = TaskApprovalRequest.query.get_or_404(request_id)
+    
+    if approval_request.status != 'PENDING':
+        flash('This request has already been processed', 'error')
+        return redirect(url_for('admin.approvals'))
+    
+    task = approval_request.task
+    
+    if approval_request.request_type == 'reassign':
+        # Reassign task to new department head
+        new_dept_head = approval_request.new_dept_head
+        if not new_dept_head or new_dept_head.role != 'department_head':
+            flash('Invalid department head in request', 'error')
+            return redirect(url_for('admin.approvals'))
+        
+        # Update task department
+        task.department_id = new_dept_head.department_id
+        
+        # Remove old assignments and assign to new department head
+        TaskAssignment.query.filter_by(task_id=task.id).delete()
+        assignment = TaskAssignment(
+            task_id=task.id,
+            user_id=new_dept_head.id,
+            assigned_by_id=approval_request.requested_by_id
+        )
+        db.session.add(assignment)
+        
+    elif approval_request.request_type == 'assign_departments':
+        # Get requested department IDs
+        requested_dept_ids = json.loads(approval_request.requested_department_ids) if approval_request.requested_department_ids else []
+        
+        # Get current department assignments
+        current_dept_assignments = TaskDepartmentAssignment.query.filter_by(task_id=task.id).all()
+        current_dept_ids = {a.department_id for a in current_dept_assignments}
+        
+        # Add assignments for requested departments that don't have one yet
+        for dept_id in requested_dept_ids:
+            if dept_id not in current_dept_ids:
+                dept_assignment = TaskDepartmentAssignment(
+                    task_id=task.id,
+                    department_id=dept_id,
+                    assigned_by_id=approval_request.requested_by_id
+                )
+                db.session.add(dept_assignment)
+                
+                # Initialize completion status
+                completion = DepartmentTaskCompletion(
+                    task_id=task.id,
+                    department_id=dept_id,
+                    is_completed=False
+                )
+                db.session.add(completion)
+        
+        # Update overall task status based on department completions
+        _update_task_completion_status(task)
+    
+    # Update approval request
+    approval_request.status = 'APPROVED'
+    approval_request.approved_by_id = current_user.id
+    approval_request.approval_notes = request.form.get('notes', '')
+    approval_request.updated_at = datetime.utcnow()
+    
+    db.session.commit()
+    flash('Request approved successfully', 'success')
+    return redirect(url_for('admin.approvals'))
+
+@admin_bp.route('/approvals/<int:request_id>/reject', methods=['POST'])
+@login_required
+@admin_required
+def reject_request(request_id):
+    """Reject a pending request"""
+    approval_request = TaskApprovalRequest.query.get_or_404(request_id)
+    
+    if approval_request.status != 'PENDING':
+        flash('This request has already been processed', 'error')
+        return redirect(url_for('admin.approvals'))
+    
+    # Update approval request
+    approval_request.status = 'REJECTED'
+    approval_request.approved_by_id = current_user.id
+    approval_request.approval_notes = request.form.get('notes', '')
+    approval_request.updated_at = datetime.utcnow()
+    
+    db.session.commit()
+    flash('Request rejected', 'info')
+    return redirect(url_for('admin.approvals'))
 
 @admin_bp.route('/analytics')
 @login_required

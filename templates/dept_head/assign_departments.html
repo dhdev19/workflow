@@ -11,7 +11,16 @@
                     <h4><i class="bi bi-building"></i> Assign Task to Departments: {{ task.task_name }}</h4>
                 </div>
                 <div class="card-body">
+                    {% if pending_request %}
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i> 
+                        <strong>Pending Approval Request</strong><br>
+                        You have a pending request to add departments to this task. Waiting for admin approval.
+                        <br><small>Note: You can still remove departments without approval.</small>
+                    </div>
+                    {% endif %}
                     <p class="text-muted">Select multiple departments to work on this task. The task will be marked as COMPLETED only when all selected departments have completed their work.</p>
+                    <p class="text-info"><i class="bi bi-info-circle"></i> <strong>Note:</strong> Adding new departments requires admin approval. Removing departments is immediate.</p>
                     <form method="POST">
                         <div class="mb-3">
                             <label class="form-label">Assign To Departments</label>
@@ -34,7 +43,9 @@
                         </div>
                         <div class="d-grid gap-2 d-md-flex justify-content-md-end">
                             <a href="{{ url_for('dept_head.dashboard') }}" class="btn btn-secondary">Cancel</a>
-                            <button type="submit" class="btn btn-primary">Assign Departments</button>
+                            <button type="submit" class="btn btn-primary">
+                                {% if pending_request %}Update Request{% else %}Submit for Approval{% endif %}
+                            </button>
                         </div>
                     </form>
                 </div>

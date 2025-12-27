@@ -11,19 +11,33 @@
                     <h4><i class="bi bi-arrow-left-right"></i> Reassign Task: {{ task.task_name }}</h4>
                 </div>
                 <div class="card-body">
+                    {% if pending_request %}
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i> 
+                        <strong>Pending Approval Request</strong><br>
+                        You have a pending request to reassign this task to 
+                        <strong>{{ pending_request.new_dept_head.full_name if pending_request.new_dept_head else 'N/A' }}</strong>.
+                        Waiting for admin approval.
+                    </div>
+                    {% endif %}
                     <form method="POST">
                         <div class="mb-3">
                             <label class="form-label">New Department Head *</label>
                             <select class="form-select" name="new_dept_head_id" required>
                                 <option value="">Select Department Head...</option>
                                 {% for head in dept_heads %}
-                                    <option value="{{ head.id }}">{{ head.full_name }} - {{ head.department.name if head.department else 'No Department' }}</option>
+                                    <option value="{{ head.id }}" {% if pending_request and pending_request.new_dept_head_id == head.id %}selected{% endif %}>
+                                        {{ head.full_name }} - {{ head.department.name if head.department else 'No Department' }}
+                                    </option>
                                 {% endfor %}
                             </select>
+                            <small class="text-muted">Note: Reassignment requires admin approval.</small>
                         </div>
                         <div class="d-grid gap-2 d-md-flex justify-content-md-end">
                             <a href="{{ url_for('dept_head.dashboard') }}" class="btn btn-secondary">Cancel</a>
-                            <button type="submit" class="btn btn-primary">Reassign Task</button>
+                            <button type="submit" class="btn btn-primary">
+                                {% if pending_request %}Update Request{% else %}Submit for Approval{% endif %}
+                            </button>
                         </div>
                     </form>
                 </div>

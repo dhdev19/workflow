@@ -2,6 +2,7 @@ from flask import Flask
 from config import Config
 from extensions import db, bcrypt, login_manager
 import os
+import json
 
 def create_app(config_class=Config):
     app = Flask(__name__)
@@ -37,6 +38,17 @@ def create_app(config_class=Config):
     app.register_blueprint(team_member_bp, url_prefix='/team-member')
     app.register_blueprint(tasks_bp, url_prefix='/tasks')
     
+    # Add custom Jinja2 filters
+    @app.template_filter('from_json')
+    def from_json_filter(value):
+        """Parse JSON string to Python object"""
+        if not value:
+            return []
+        try:
+            return json.loads(value)
+        except (json.JSONDecodeError, TypeError):
+            return []
+    
     @app.route('/')
     def index():
         from flask import redirect, url_for
@@ -53,7 +65,7 @@ def create_app(config_class=Config):
     with app.app_context():
         try:
             # Import all models to ensure they're registered with SQLAlchemy
-            from models import User, Department, Task, TaskAssignment, Subtask, TaskDepartmentAssignment, DepartmentTaskCompletion
+            from models import User, Department, Task, TaskAssignment, Subtask, TaskDepartmentAssignment, DepartmentTaskCompletion, TaskApprovalRequest
             db.create_all()
             
             # Create default admin if not exists (skip in test mode)

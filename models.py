@@ -54,6 +54,7 @@ class Task(db.Model):
     subtasks = relationship('Subtask', back_populates='task', cascade='all, delete-orphan')
     department_assignments = relationship('TaskDepartmentAssignment', back_populates='task', cascade='all, delete-orphan')
     department_completions = relationship('DepartmentTaskCompletion', back_populates='task', cascade='all, delete-orphan')
+    approval_requests = relationship('TaskApprovalRequest', back_populates='task', cascade='all, delete-orphan')
     
     def __repr__(self):
         return f'<Task {self.task_name}>'
@@ -122,4 +123,32 @@ class DepartmentTaskCompletion(db.Model):
     
     def __repr__(self):
         return f'<DepartmentTaskCompletion task_id={self.task_id} department_id={self.department_id} is_completed={self.is_completed}>'
+
+class TaskApprovalRequest(db.Model):
+    """Tracks approval requests for department head actions"""
+    id = db.Column(db.Integer, primary_key=True)
+    task_id = db.Column(db.Integer, db.ForeignKey('task.id'), nullable=False)
+    request_type = db.Column(db.String(50), nullable=False)  # 'reassign' or 'assign_departments'
+    requested_by_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    status = db.Column(db.String(50), nullable=False, default='PENDING')  # PENDING, APPROVED, REJECTED
+    approved_by_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    approval_notes = db.Column(db.Text, nullable=True)
+    
+    # For reassign requests
+    new_dept_head_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    
+    # For assign_departments requests - stored as JSON or separate table
+    # We'll use a JSON field or create a separate table for requested departments
+    requested_department_ids = db.Column(db.Text, nullable=True)  # JSON array of department IDs
+    
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    
+    task = relationship('Task', back_populates='approval_requests')
+    requested_by = relationship('User', foreign_keys=[requested_by_id])
+    approved_by = relationship('User', foreign_keys=[approved_by_id])
+    new_dept_head = relationship('User', foreign_keys=[new_dept_head_id])
+    
+    def __repr__(self):
+        return f'<TaskApprovalRequest task_id={self.task_id} type={self.request_type} status={self.status}>'
 

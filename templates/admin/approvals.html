@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+
+{% block title %}Approval Requests - Digital Homeez{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <nav class="col-md-2 sidebar">
+            <div class="position-sticky pt-3">
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin.dashboard') }}">
+                            <i class="bi bi-house"></i> Homepage
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin.departments') }}">
+                            <i class="bi bi-building"></i> Departments
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin.users') }}">
+                            <i class="bi bi-people"></i> Users
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin.analytics') }}">
+                            <i class="bi bi-bar-chart"></i> Analytics
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="{{ url_for('admin.approvals') }}">
+                            <i class="bi bi-check-circle"></i> Approvals
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </nav>
+
+        <main class="col-md-10 main-content">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1><i class="bi bi-check-circle"></i> Pending Approval Requests</h1>
+            </div>
+
+            {% if requests %}
+            <div class="card">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Request ID</th>
+                                    <th>Task</th>
+                                    <th>Type</th>
+                                    <th>Requested By</th>
+                                    <th>Details</th>
+                                    <th>Requested At</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for req in requests %}
+                                <tr>
+                                    <td>#{{ req.id }}</td>
+                                    <td>
+                                        <a href="{{ url_for('tasks.view_task', task_id=req.task_id) }}">
+                                            {{ req.task.task_name }}
+                                        </a>
+                                    </td>
+                                    <td>
+                                        {% if req.request_type == 'reassign' %}
+                                            <span class="badge bg-info">Reassign Task</span>
+                                        {% elif req.request_type == 'assign_departments' %}
+                                            <span class="badge bg-warning">Assign Departments</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ req.requested_by.full_name }}<br><small class="text-muted">{{ req.requested_by.department.name if req.requested_by.department else 'No Department' }}</small></td>
+                                    <td>
+                                        {% if req.request_type == 'reassign' %}
+                                            <strong>New Department Head:</strong><br>
+                                            {{ req.new_dept_head.full_name if req.new_dept_head else 'N/A' }}<br>
+                                            <small class="text-muted">{{ req.new_dept_head.department.name if req.new_dept_head and req.new_dept_head.department else '' }}</small>
+                                        {% elif req.request_type == 'assign_departments' %}
+                                            <strong>Requested Departments:</strong><br>
+                                            {% if req.requested_department_ids %}
+                                                {% set dept_ids = req.requested_department_ids|from_json %}
+                                                {% for dept_id in dept_ids %}
+                                                    {% for dept in departments %}
+                                                        {% if dept.id == dept_id %}
+                                                            <span class="badge bg-secondary">{{ dept.name }}</span>
+                                                        {% endif %}
+                                                    {% endfor %}
+                                                {% endfor %}
+                                            {% else %}
+                                                <span class="text-muted">No departments specified</span>
+                                            {% endif %}
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ req.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <form method="POST" action="{{ url_for('admin.approve_request', request_id=req.id) }}" style="display: inline;">
+                                                <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#approveModal{{ req.id }}">
+                                                    <i class="bi bi-check-circle"></i> Approve
+                                                </button>
+                                            </form>
+                                            <form method="POST" action="{{ url_for('admin.reject_request', request_id=req.id) }}" style="display: inline;">
+                                                <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#rejectModal{{ req.id }}">
+                                                    <i class="bi bi-x-circle"></i> Reject
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+
+                                <!-- Approve Modal -->
+                                <div class="modal fade" id="approveModal{{ req.id }}" tabindex="-1">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title">Approve Request</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <form method="POST" action="{{ url_for('admin.approve_request', request_id=req.id) }}">
+                                                <div class="modal-body">
+                                                    <p>Are you sure you want to approve this request?</p>
+                                                    <div class="mb-3">
+                                                        <label class="form-label">Notes (optional)</label>
+                                                        <textarea class="form-control" name="notes" rows="3"></textarea>
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                    <button type="submit" class="btn btn-success">Approve</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Reject Modal -->
+                                <div class="modal fade" id="rejectModal{{ req.id }}" tabindex="-1">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title">Reject Request</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <form method="POST" action="{{ url_for('admin.reject_request', request_id=req.id) }}">
+                                                <div class="modal-body">
+                                                    <p>Are you sure you want to reject this request?</p>
+                                                    <div class="mb-3">
+                                                        <label class="form-label">Reason (optional)</label>
+                                                        <textarea class="form-control" name="notes" rows="3"></textarea>
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                    <button type="submit" class="btn btn-danger">Reject</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i> No pending approval requests.
+            </div>
+            {% endif %}
+        </main>
+    </div>
+</div>
+{% endblock %}
+
