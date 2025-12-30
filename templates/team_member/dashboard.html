@@ -96,7 +96,13 @@
                                         {% endif %}
                                     </td>
                                     <td>
-                                        <span class="badge bg-secondary">{{ task.status }}</span>
+                                        {% if task.status == 'COMPLETED' %}
+                                            <span class="badge bg-success">{{ task.status }}</span>
+                                        {% elif task.status == 'PENDING' %}
+                                            <span class="badge bg-warning text-dark">{{ task.status }}</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">{{ task.status }}</span>
+                                        {% endif %}
                                     </td>
                                     <td>{{ task.client_name or 'N/A' }}</td>
                                     <td>

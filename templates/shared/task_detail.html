@@ -17,7 +17,13 @@
                         {% else %}
                             <span class="badge badge-daily">DAILY TASK</span>
                         {% endif %}
-                        <span class="badge bg-secondary">{{ task.status }}</span>
+                        {% if task.status == 'COMPLETED' %}
+                            <span class="badge bg-success">{{ task.status }}</span>
+                        {% elif task.status == 'PENDING' %}
+                            <span class="badge bg-warning text-dark">{{ task.status }}</span>
+                        {% else %}
+                            <span class="badge bg-secondary">{{ task.status }}</span>
+                        {% endif %}
                     </div>
                 </div>
                 <div class="card-body">

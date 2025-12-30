@@ -21,7 +21,6 @@
                                 <th>Name</th>
                                 <th>Email</th>
                                 <th>Username</th>
-                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -30,13 +29,6 @@
                                 <td>{{ member.full_name }}</td>
                                 <td>{{ member.email }}</td>
                                 <td>{{ member.username }}</td>
-                                <td>
-                                    <form method="POST" action="{{ url_for('dept_head.delete_team_member', user_id=member.id) }}" style="display:inline;" onsubmit="return confirm('Are you sure you want to remove this team member?');">
-                                        <button type="submit" class="btn btn-sm btn-danger">
-                                            <i class="bi bi-trash"></i> Remove
-                                        </button>
-                                    </form>
-                                </td>
                             </tr>
                             {% else %}
                             <tr>

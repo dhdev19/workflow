@@ -97,7 +97,13 @@
                                         {% endif %}
                                     </td>
                                     <td>
-                                        <span class="badge bg-secondary">{{ task.status }}</span>
+                                        {% if task.status == 'COMPLETED' %}
+                                            <span class="badge bg-success">{{ task.status }}</span>
+                                        {% elif task.status == 'PENDING' %}
+                                            <span class="badge bg-warning text-dark">{{ task.status }}</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">{{ task.status }}</span>
+                                        {% endif %}
                                         {% if task.department_assignments|length > 0 %}
                                             <span class="badge bg-success ms-1" title="Involves {{ task.department_assignments|length }} department(s)">
                                                 <i class="bi bi-building"></i> {{ task.department_assignments|length }} Dept(s)
