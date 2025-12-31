@@ -74,10 +74,10 @@
                             <tbody>
                                 {% for task in tasks %}
                                 <tr>
-                                    <td>{{ task.created_at.strftime('%Y-%m-%d %H:%M') if task.created_at else 'N/A' }}</td>
+                                    <td>{{ task.created_at.strftime('%d %b %y') if task.created_at else 'N/A' }}</td>
                                     <td>
                                         {% if task.deadline %}
-                                            {{ task.deadline.strftime('%Y-%m-%d %H:%M') }}
+                                            {{ task.deadline.strftime('%d %b %y') }}
                                         {% else %}
                                             N/A
                                         {% endif %}

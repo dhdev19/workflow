@@ -37,12 +37,12 @@
                     </div>
                     <div class="row mb-3">
                         <div class="col-md-6">
-                            <strong>Created:</strong> {{ task.created_at.strftime('%Y-%m-%d %H:%M') if task.created_at else 'N/A' }}
+                            <strong>Created:</strong> {{ task.created_at.strftime('%d %b %y') if task.created_at else 'N/A' }}
                         </div>
                         <div class="col-md-6">
                             <strong>Deadline:</strong> 
                             {% if task.deadline %}
-                                {{ task.deadline.strftime('%Y-%m-%d %H:%M') }}
+                                {{ task.deadline.strftime('%d %b %y') }}
                             {% else %}
                                 N/A
                             {% endif %}
@@ -185,12 +185,12 @@
                                         {% endif %}
                                     </td>
                                     <td>
-                                        {{ req.created_at.strftime('%Y-%m-%d %H:%M') }}
+                                        {{ req.created_at.strftime('%d %b %y') }}
                                     </td>
                                     <td>
                                         {% if req.approved_by %}
                                             {{ req.approved_by.full_name }}<br>
-                                            <small class="text-muted">{{ req.updated_at.strftime('%Y-%m-%d %H:%M') if req.updated_at else '' }}</small>
+                                            <small class="text-muted">{{ req.updated_at.strftime('%d %b %y') if req.updated_at else '' }}</small>
                                         {% else %}
                                             <span class="text-muted">-</span>
                                         {% endif %}

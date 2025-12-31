@@ -66,7 +66,7 @@
                                         <span class="text-muted">No Department Head</span>
                                     {% endif %}
                                 </td>
-                                <td>{{ dept.created_at.strftime('%Y-%m-%d') if dept.created_at else 'N/A' }}</td>
+                                <td>{{ dept.created_at.strftime('%d %b %y') if dept.created_at else 'N/A' }}</td>
                                 <td>
                                     <a href="{{ url_for('admin.edit_department', dept_id=dept.id) }}" class="btn btn-sm btn-primary">
                                         <i class="bi bi-pencil"></i> Edit
