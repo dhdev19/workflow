@@ -72,6 +72,15 @@ def create_task():
             remark=remark
         )
         db.session.add(task)
+        db.session.flush()  # Flush to get task.id without committing
+        
+        # Auto-assign task to the team member who created it
+        assignment = TaskAssignment(
+            task_id=task.id,
+            user_id=current_user.id,
+            assigned_by_id=current_user.id
+        )
+        db.session.add(assignment)
         db.session.commit()
         flash('Task created successfully', 'success')
         return redirect(url_for('team_member.dashboard'))
