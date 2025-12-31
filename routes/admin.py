@@ -569,11 +569,25 @@ def analytics():
     for dept in departments:
         dept_tasks = Task.query.filter_by(department_id=dept.id).count()
         dept_completed = Task.query.filter_by(department_id=dept.id, status='COMPLETED').count()
+        completion_rate = ((dept_completed / dept_tasks) * 100) if dept_tasks > 0 else 0
         dept_stats.append({
             'name': dept.name,
             'total': dept_tasks,
-            'completed': dept_completed
+            'completed': dept_completed,
+            'completion_rate': completion_rate
         })
+    
+    # Sort by completion rate (descending) and assign medals to top 3
+    dept_stats.sort(key=lambda x: x['completion_rate'], reverse=True)
+    for i, stat in enumerate(dept_stats):
+        if i == 0:
+            stat['medal'] = '🥇'  # Gold
+        elif i == 1:
+            stat['medal'] = '🥈'  # Silver
+        elif i == 2:
+            stat['medal'] = '🥉'  # Bronze
+        else:
+            stat['medal'] = ''
     
     # User statistics
     total_users = User.query.count()
