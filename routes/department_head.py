@@ -165,6 +165,7 @@ def create_task():
         db.session.flush()
         
         # Assign to team members
+        assigned_users = []
         assign_to = request.form.getlist('assign_to[]')
         for user_id in assign_to:
             if user_id:
@@ -176,6 +177,7 @@ def create_task():
                         assigned_by_id=current_user.id
                     )
                     db.session.add(assignment)
+                    assigned_users.append(member)
         
         # Assign to departments (including own department)
         assign_to_depts = request.form.getlist('assign_to_dept[]')
@@ -218,10 +220,22 @@ def create_task():
             )
             db.session.add(approval_request)
             db.session.commit()
+            
+            # Send FCM notifications to assigned users
+            from utils import send_task_assignment_notification
+            for user in assigned_users:
+                send_task_assignment_notification(user, task, current_user)
+            
             flash('Task created successfully. Request to involve other departments submitted. Waiting for admin approval.', 'info')
         else:
             # No other departments, just commit
             db.session.commit()
+            
+            # Send FCM notifications to assigned users
+            from utils import send_task_assignment_notification
+            for user in assigned_users:
+                send_task_assignment_notification(user, task, current_user)
+            
             flash('Task created successfully', 'success')
         
         return redirect(url_for('dept_head.dashboard'))

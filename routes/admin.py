@@ -277,14 +277,18 @@ def create_task():
         assign_to = request.form.getlist('assign_to[]')
         assign_type = request.form.getlist('assign_type[]')
         
+        assigned_users = []
         for i, user_id in enumerate(assign_to):
             if assign_type[i] == 'user' and user_id:
-                assignment = TaskAssignment(
-                    task_id=task.id,
-                    user_id=int(user_id),
-                    assigned_by_id=current_user.id
-                )
-                db.session.add(assignment)
+                user = User.query.get(int(user_id))
+                if user:
+                    assignment = TaskAssignment(
+                        task_id=task.id,
+                        user_id=user.id,
+                        assigned_by_id=current_user.id
+                    )
+                    db.session.add(assignment)
+                    assigned_users.append(user)
             elif assign_type[i] == 'department' and user_id:
                 # Assign to all members of department
                 dept = Department.query.get(int(user_id))
@@ -296,8 +300,15 @@ def create_task():
                             assigned_by_id=current_user.id
                         )
                         db.session.add(assignment)
+                        assigned_users.append(member)
         
         db.session.commit()
+        
+        # Send FCM notifications to assigned users
+        from utils import send_task_assignment_notification
+        for user in assigned_users:
+            send_task_assignment_notification(user, task, current_user)
+        
         flash('Task created successfully', 'success')
         return redirect(url_for('admin.dashboard'))
     
@@ -356,14 +367,18 @@ def assign_task(task_id):
         assign_to = request.form.getlist('assign_to[]')
         assign_type = request.form.getlist('assign_type[]')
         
+        assigned_users = []
         for i, user_id in enumerate(assign_to):
             if assign_type[i] == 'user' and user_id:
-                assignment = TaskAssignment(
-                    task_id=task.id,
-                    user_id=int(user_id),
-                    assigned_by_id=current_user.id
-                )
-                db.session.add(assignment)
+                user = User.query.get(int(user_id))
+                if user:
+                    assignment = TaskAssignment(
+                        task_id=task.id,
+                        user_id=user.id,
+                        assigned_by_id=current_user.id
+                    )
+                    db.session.add(assignment)
+                    assigned_users.append(user)
             elif assign_type[i] == 'department' and user_id:
                 dept = Department.query.get(int(user_id))
                 if dept:
@@ -374,8 +389,15 @@ def assign_task(task_id):
                             assigned_by_id=current_user.id
                         )
                         db.session.add(assignment)
+                        assigned_users.append(member)
         
         db.session.commit()
+        
+        # Send FCM notifications to assigned users
+        from utils import send_task_assignment_notification
+        for user in assigned_users:
+            send_task_assignment_notification(user, task, current_user)
+        
         flash('Task assignments updated successfully', 'success')
         return redirect(url_for('admin.dashboard'))
     

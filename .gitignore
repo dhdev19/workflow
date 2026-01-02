@@ -50,4 +50,9 @@ __pycache__/
 .DS_Store
 Thumbs.db
 
+# Firebase credentials (keep secure, don't commit)
 workflow-14c8d-firebase-adminsdk-fbsvc-69292c3a6b.json
+workflow-firebase.json
+firebase-credentials.json
+*-firebase*.json
+workflow_android_app

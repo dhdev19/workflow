@@ -82,6 +82,11 @@ def create_task():
         )
         db.session.add(assignment)
         db.session.commit()
+        
+        # Send FCM notification to self (since task is auto-assigned)
+        from utils import send_task_assignment_notification
+        send_task_assignment_notification(current_user, task, current_user)
+        
         flash('Task created successfully', 'success')
         return redirect(url_for('team_member.dashboard'))
     

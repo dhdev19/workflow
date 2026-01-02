@@ -17,6 +17,7 @@ class User(UserMixin, db.Model):
     department = relationship('Department', back_populates='members')
     assigned_tasks = relationship('TaskAssignment', primaryjoin='TaskAssignment.user_id == User.id', back_populates='user', cascade='all, delete-orphan')
     created_tasks = relationship('Task', foreign_keys='Task.created_by_id', back_populates='creator')
+    fcm_devices = relationship('FCMDevice', back_populates='user', cascade='all, delete-orphan')
     
     def __repr__(self):
         return f'<User {self.username}>'
@@ -151,4 +152,19 @@ class TaskApprovalRequest(db.Model):
     
     def __repr__(self):
         return f'<TaskApprovalRequest task_id={self.task_id} type={self.request_type} status={self.status}>'
+
+class FCMDevice(db.Model):
+    """Stores FCM tokens for user devices"""
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    fcm_token = db.Column(db.String(500), nullable=False, unique=True, index=True)
+    device_name = db.Column(db.String(200), nullable=True)  # e.g., "John's iPhone", "Samsung Galaxy"
+    device_type = db.Column(db.String(50), nullable=True)  # e.g., "android", "ios", "web"
+    last_active = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    
+    user = relationship('User', back_populates='fcm_devices')
+    
+    def __repr__(self):
+        return f'<FCMDevice user_id={self.user_id} device={self.device_name}>'
 

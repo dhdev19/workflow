@@ -31,12 +31,14 @@ def create_app(config_class=Config):
     from routes.department_head import dept_head_bp
     from routes.team_member import team_member_bp
     from routes.tasks import tasks_bp
+    from routes.notifications import notifications_bp
     
     app.register_blueprint(auth_bp, url_prefix='/auth')
     app.register_blueprint(admin_bp, url_prefix='/admin')
     app.register_blueprint(dept_head_bp, url_prefix='/dept-head')
     app.register_blueprint(team_member_bp, url_prefix='/team-member')
     app.register_blueprint(tasks_bp, url_prefix='/tasks')
+    app.register_blueprint(notifications_bp, url_prefix='/api/notifications')
     
     # Add custom Jinja2 filters
     @app.template_filter('from_json')
@@ -65,7 +67,7 @@ def create_app(config_class=Config):
     with app.app_context():
         try:
             # Import all models to ensure they're registered with SQLAlchemy
-            from models import User, Department, Task, TaskAssignment, Subtask, TaskDepartmentAssignment, DepartmentTaskCompletion, TaskApprovalRequest
+            from models import User, Department, Task, TaskAssignment, Subtask, TaskDepartmentAssignment, DepartmentTaskCompletion, TaskApprovalRequest, FCMDevice
             db.create_all()
             
             # Create default admin if not exists (skip in test mode)

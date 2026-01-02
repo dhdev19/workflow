@@ -7,6 +7,10 @@ load_dotenv()
 class Config:
     SECRET_KEY = os.getenv('SECRET_KEY', 'your-secret-key-change-this-in-production')
     
+    # Firebase configuration
+    FIREBASE_SERVICE_ACCOUNT_PATH = os.getenv('FIREBASE_SERVICE_ACCOUNT_PATH', 'workflow-firebase.json')
+    FIREBASE_VAPID_KEY = os.getenv('FIREBASE_VAPID_KEY', '')
+    
     # Database configuration
     DB_HOSTNAME = os.getenv('DB_HOSTNAME', 'localhost')
     DB_USER = os.getenv('DB_USER', 'root')
