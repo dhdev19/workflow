@@ -54,17 +54,23 @@ def can_access_task(user, task):
 def send_task_assignment_notification(user, task, assigned_by):
     """Send FCM notification when a task is assigned to a user (sends to all user devices)"""
     try:
-        from fcm_service import send_notification_to_multiple
+        from fcm_service import send_notification_to_multiple, send_notification
         from models import FCMDevice
         
         # Get all FCM tokens for the user
-        devices = FCMDevice.query.filter_by(user_id=user.id).all()
+        # devices = FCMDevice.query.filter_by(user_id=user.id).all()
+        try:
+            device = user.fcm_devices[0]
+            devices = [device.fcm_token]
+        except Exception as e:
+            print(f"Error getting FCM token: {e}")
+            devices = []
         if not devices:
             return False
-        
-        fcm_tokens = [device.fcm_token for device in devices if device.fcm_token]
-        if not fcm_tokens:
-            return False
+        # 
+        # fcm_tokens = [device.fcm_token for device in devices if device.fcm_token]
+        # if not fcm_tokens:
+        #     return False
         
         title = "New Task Assigned"
         priority_emoji = {
@@ -85,7 +91,8 @@ def send_task_assignment_notification(user, task, assigned_by):
         }
         
         # Send to all user devices
-        result = send_notification_to_multiple(fcm_tokens, title, body, data)
+        # result = send_notification_to_multiple(fcm_tokens, title, body, data)
+        result = send_notification(devices[0], title, body, data)
         return result['success'] > 0
     except Exception as e:
         from flask import current_app

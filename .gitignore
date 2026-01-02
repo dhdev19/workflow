@@ -56,3 +56,6 @@ workflow-firebase.json
 firebase-credentials.json
 *-firebase*.json
 workflow_android_app
+FCM_INTEGRATION.md
+FIREBASE_SETUP.md
+MIGRATION_NOTES.md
