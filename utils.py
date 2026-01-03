@@ -63,9 +63,14 @@ def send_task_assignment_notification(user, task, assigned_by):
             device = user.fcm_devices[0]
             devices = [device.fcm_token]
         except Exception as e:
-            print(f"Error getting FCM token: {e}")
+            from flask import current_app
+            if current_app:
+                current_app.logger.info(f"FCM Task Assignment Notification - NO DEVICE - User: {user.email} (ID: {user.id}), Task: '{task.task_name}' (ID: {task.id}), Error getting FCM token: {str(e)}")
             devices = []
         if not devices:
+            from flask import current_app
+            if current_app:
+                current_app.logger.info(f"FCM Task Assignment Notification - NO FCM TOKEN - User: {user.email} (ID: {user.id}), Task: '{task.task_name}' (ID: {task.id}), User has no registered FCM devices")
             return False
         # 
         # fcm_tokens = [device.fcm_token for device in devices if device.fcm_token]

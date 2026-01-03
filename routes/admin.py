@@ -309,10 +309,10 @@ def create_task():
                     )
                     db.session.add(completion)
                     
-                    # Auto-assign to department head
+                    # Search DB for department head for this department ID, then assign to head and call FCM
                     dept_head = User.query.filter_by(department_id=dept.id, role='department_head').first()
                     if dept_head:
-                        # Check if department head is already assigned (avoid duplicate)
+                        # Check if department head is already assigned (avoid duplicate assignment record)
                         existing_assignment = TaskAssignment.query.filter_by(
                             task_id=task.id,
                             user_id=dept_head.id
@@ -324,7 +324,14 @@ def create_task():
                                 assigned_by_id=current_user.id
                             )
                             db.session.add(assignment)
+                        # Always add to assigned_users for FCM notification, even if already assigned
+                        if dept_head not in assigned_users:
                             assigned_users.append(dept_head)
+                    else:
+                        # Log if no department head found
+                        from flask import current_app
+                        if current_app:
+                            current_app.logger.info(f"Task CREATED - No department head found for Department ID: {dept.id}, Task: '{task.task_name}' (ID: {task.id})")
         
         db.session.commit()
         
@@ -336,8 +343,14 @@ def create_task():
         
         # Send FCM notifications to assigned users
         from utils import send_task_assignment_notification
-        for user in assigned_users:
-            send_task_assignment_notification(user, task, current_user)
+        if assigned_users:
+            for user in assigned_users:
+                send_task_assignment_notification(user, task, current_user)
+        else:
+            # Log when no users are assigned (no notifications sent)
+            from flask import current_app
+            if current_app:
+                current_app.logger.info(f"FCM Task Assignment Notification - NO USERS ASSIGNED - Task: '{task.task_name}' (ID: {task.id}), No users assigned to receive notification")
         
         flash('Task created successfully', 'success')
         return redirect(url_for('admin.dashboard'))
