@@ -93,10 +93,15 @@ def send_task_assignment_notification(user, task, assigned_by):
         # Send to all user devices
         # result = send_notification_to_multiple(fcm_tokens, title, body, data)
         result = send_notification(devices[0], title, body, data)
-        return result['success'] > 0
+        # Log notification attempt (success/failure logged in fcm_service)
+        from flask import current_app
+        if current_app:
+            status = "SUCCESS" if result else "FAILED"
+            current_app.logger.error(f"FCM Task Assignment Notification - {status} - User: {user.email} (ID: {user.id}), Task: '{task.task_name}' (ID: {task.id}), Assigned by: {assigned_by.email}")
+        return result
     except Exception as e:
         from flask import current_app
         if current_app:
-            current_app.logger.error(f"Error sending task assignment notification: {str(e)}")
+            current_app.logger.error(f"FCM Task Assignment Notification - EXCEPTION - User: {user.email if user else 'Unknown'} (ID: {user.id if user else 'N/A'}), Task: '{task.task_name if task else 'Unknown'}' (ID: {task.id if task else 'N/A'}), Error: {str(e)}")
         return False
 

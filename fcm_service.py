@@ -39,7 +39,7 @@ def send_notification(fcm_token, title, body, data=None):
         initialize_firebase()
         
         if _firebase_app is None:
-            current_app.logger.warning("Firebase not initialized. Cannot send notification.")
+            current_app.logger.error(f"FCM Notification FAILED - Firebase not initialized. Title: '{title}', Body: '{body}'")
             return False
         
         message = messaging.Message(
@@ -52,10 +52,11 @@ def send_notification(fcm_token, title, body, data=None):
         )
         
         response = messaging.send(message)
-        current_app.logger.info(f"Successfully sent notification: {response}")
+        # Log to error log file (even successful sends)
+        current_app.logger.error(f"FCM Notification SENT - Title: '{title}', Body: '{body}', Token: {fcm_token[:20]}..., Response: {response}")
         return True
     except Exception as e:
-        current_app.logger.error(f"Error sending notification: {str(e)}")
+        current_app.logger.error(f"FCM Notification FAILED - Title: '{title}', Body: '{body}', Token: {fcm_token[:20] if fcm_token else 'None'}..., Error: {str(e)}")
         return False
 
 def send_notification_to_multiple(tokens, title, body, data=None):
@@ -83,7 +84,7 @@ def send_notification_to_multiple(tokens, title, body, data=None):
         initialize_firebase()
         
         if _firebase_app is None:
-            current_app.logger.warning("Firebase not initialized. Cannot send notifications.")
+            current_app.logger.error(f"FCM Notification MULTICAST FAILED - Firebase not initialized. Title: '{title}', Body: '{body}', Tokens: {len(valid_tokens)}")
             return {'success': 0, 'failure': len(valid_tokens)}
         
         message = messaging.MulticastMessage(
@@ -96,9 +97,10 @@ def send_notification_to_multiple(tokens, title, body, data=None):
         )
         
         response = messaging.send_multicast(message)
-        current_app.logger.info(f"Successfully sent {response.success_count} notifications, {response.failure_count} failed")
+        # Log to error log file (even successful sends)
+        current_app.logger.error(f"FCM Notification MULTICAST - Title: '{title}', Body: '{body}', Tokens: {len(valid_tokens)}, Success: {response.success_count}, Failed: {response.failure_count}")
         return {'success': response.success_count, 'failure': response.failure_count}
     except Exception as e:
-        current_app.logger.error(f"Error sending notifications: {str(e)}")
+        current_app.logger.error(f"FCM Notification MULTICAST FAILED - Title: '{title}', Body: '{body}', Tokens: {len(valid_tokens)}, Error: {str(e)}")
         return {'success': 0, 'failure': len(valid_tokens)}
 
