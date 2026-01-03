@@ -273,15 +273,48 @@ def create_task():
         db.session.add(task)
         db.session.flush()
         
-        # Assign to department heads, members, or departments
+        assigned_users = []
+        
+        # Simple logic: If task is assigned to a department, search DB for dept head, assign to dept head, then send FCM
+        if department_id:
+            dept = Department.query.get(int(department_id))
+            if dept:
+                # Create TaskDepartmentAssignment record
+                dept_assignment = TaskDepartmentAssignment(
+                    task_id=task.id,
+                    department_id=dept.id,
+                    assigned_by_id=current_user.id
+                )
+                db.session.add(dept_assignment)
+                
+                # Initialize completion status
+                completion = DepartmentTaskCompletion(
+                    task_id=task.id,
+                    department_id=dept.id,
+                    is_completed=False
+                )
+                db.session.add(completion)
+                
+                # Search DB for department head for this department ID
+                dept_head = User.query.filter_by(department_id=dept.id, role='department_head').first()
+                if dept_head:
+                    # Assign to department head
+                    assignment = TaskAssignment(
+                        task_id=task.id,
+                        user_id=dept_head.id,
+                        assigned_by_id=current_user.id
+                    )
+                    db.session.add(assignment)
+                    assigned_users.append(dept_head)
+        
+        # Handle manual user assignments from form (if any)
         assign_to = request.form.getlist('assign_to[]')
         assign_type = request.form.getlist('assign_type[]')
         
-        assigned_users = []
         for i, user_id in enumerate(assign_to):
             if assign_type[i] == 'user' and user_id:
                 user = User.query.get(int(user_id))
-                if user:
+                if user and user not in assigned_users:
                     assignment = TaskAssignment(
                         task_id=task.id,
                         user_id=user.id,
@@ -289,49 +322,6 @@ def create_task():
                     )
                     db.session.add(assignment)
                     assigned_users.append(user)
-            elif assign_type[i] == 'department' and user_id:
-                # Assign to department: create TaskDepartmentAssignment and auto-assign department head
-                dept = Department.query.get(int(user_id))
-                if dept:
-                    # Create TaskDepartmentAssignment record
-                    dept_assignment = TaskDepartmentAssignment(
-                        task_id=task.id,
-                        department_id=dept.id,
-                        assigned_by_id=current_user.id
-                    )
-                    db.session.add(dept_assignment)
-                    
-                    # Initialize completion status
-                    completion = DepartmentTaskCompletion(
-                        task_id=task.id,
-                        department_id=dept.id,
-                        is_completed=False
-                    )
-                    db.session.add(completion)
-                    
-                    # Search DB for department head for this department ID, then assign to head and call FCM
-                    dept_head = User.query.filter_by(department_id=dept.id, role='department_head').first()
-                    if dept_head:
-                        # Check if department head is already assigned (avoid duplicate assignment record)
-                        existing_assignment = TaskAssignment.query.filter_by(
-                            task_id=task.id,
-                            user_id=dept_head.id
-                        ).first()
-                        if not existing_assignment:
-                            assignment = TaskAssignment(
-                                task_id=task.id,
-                                user_id=dept_head.id,
-                                assigned_by_id=current_user.id
-                            )
-                            db.session.add(assignment)
-                        # Always add to assigned_users for FCM notification, even if already assigned
-                        if dept_head not in assigned_users:
-                            assigned_users.append(dept_head)
-                    else:
-                        # Log if no department head found
-                        from flask import current_app
-                        if current_app:
-                            current_app.logger.info(f"Task CREATED - No department head found for Department ID: {dept.id}, Task: '{task.task_name}' (ID: {task.id})")
         
         db.session.commit()
         
