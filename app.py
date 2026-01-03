@@ -1,12 +1,39 @@
-from flask import Flask
+from flask import Flask, request
 from config import Config
 from extensions import db, bcrypt, login_manager
 import os
 import json
+import logging
+import traceback
+from logging.handlers import RotatingFileHandler
 
 def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
+    
+    # Setup error logging for production
+    if config_class.IS_PRODUCTION:
+        # Configure logging to file
+        if not app.debug:
+            # Setup file handler with rotation (errorlog.txt in root directory)
+            log_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'errorlog.txt')
+            file_handler = RotatingFileHandler(
+                log_file,
+                maxBytes=10240000,  # 10MB
+                backupCount=10
+            )
+            file_handler.setLevel(logging.ERROR)
+            
+            # Create formatter
+            formatter = logging.Formatter(
+                '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]',
+                datefmt='%Y-%m-%d %H:%M:%S'
+            )
+            file_handler.setFormatter(formatter)
+            
+            # Add handler to app logger
+            app.logger.addHandler(file_handler)
+            app.logger.setLevel(logging.ERROR)
     
     # Apply engine options to app config if using MySQL
     if hasattr(config_class, 'SQLALCHEMY_ENGINE_OPTIONS') and config_class.SQLALCHEMY_ENGINE_OPTIONS:
@@ -64,6 +91,44 @@ def create_app(config_class=Config):
                 return redirect(url_for('team_member.dashboard'))
         return redirect(url_for('auth.login'))
     
+    # Register error handlers for production logging
+    @app.errorhandler(404)
+    def not_found_error(error):
+        if config_class.IS_PRODUCTION:
+            app.logger.error(f'404 Error: {request.url} - {str(error)}')
+        from flask import jsonify
+        return jsonify({'error': 'Not found'}), 404
+    
+    @app.errorhandler(500)
+    def internal_error(error):
+        if config_class.IS_PRODUCTION:
+            app.logger.error(
+                f'500 Internal Server Error\n'
+                f'Request URL: {request.url}\n'
+                f'Request Method: {request.method}\n'
+                f'Error: {str(error)}\n'
+                f'Traceback:\n{traceback.format_exc()}'
+            )
+        from flask import jsonify
+        return jsonify({'error': 'Internal server error'}), 500
+    
+    # Log unhandled exceptions
+    @app.errorhandler(Exception)
+    def handle_exception(e):
+        if config_class.IS_PRODUCTION:
+            app.logger.error(
+                f'Unhandled Exception: {type(e).__name__}: {str(e)}\n'
+                f'Request URL: {request.url}\n'
+                f'Request Method: {request.method}\n'
+                f'Request Data: {request.get_data(as_text=True)[:500]}\n'
+                f'Traceback:\n{traceback.format_exc()}'
+            )
+        # Re-raise in debug mode to see full error
+        if app.debug:
+            raise
+        from flask import jsonify
+        return jsonify({'error': 'An unexpected error occurred'}), 500
+    
     with app.app_context():
         try:
             # Import all models to ensure they're registered with SQLAlchemy
@@ -86,7 +151,10 @@ def create_app(config_class=Config):
                     db.session.commit()
         except Exception as e:
             if not app.config.get('TESTING', False):
-                print(f"Database initialization error: {e}")
+                error_msg = f"Database initialization error: {e}\n{traceback.format_exc()}"
+                print(error_msg)
+                if config_class.IS_PRODUCTION:
+                    app.logger.error(error_msg)
                 print("\nPlease check:")
                 print("1. Database name in .env file (DB_NAME) - it might be different from username")
                 print("2. Database exists in your MySQL server")

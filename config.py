@@ -7,6 +7,14 @@ load_dotenv()
 class Config:
     SECRET_KEY = os.getenv('SECRET_KEY', 'your-secret-key-change-this-in-production')
     
+    # Environment detection
+    ENV = os.getenv('FLASK_ENV', 'production')
+    DEBUG = os.getenv('FLASK_DEBUG', 'False').lower() == 'true'
+    TESTING = os.getenv('TESTING', 'False').lower() == 'true'
+    
+    # Production mode detection
+    IS_PRODUCTION = ENV == 'production' and not DEBUG and not TESTING
+    
     # Firebase configuration
     FIREBASE_SERVICE_ACCOUNT_PATH = os.getenv('FIREBASE_SERVICE_ACCOUNT_PATH', 'workflow-firebase.json')
     FIREBASE_VAPID_KEY = os.getenv('FIREBASE_VAPID_KEY', '')

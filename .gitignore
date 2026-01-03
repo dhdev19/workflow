@@ -59,3 +59,8 @@ workflow_android_app
 FCM_INTEGRATION.md
 FIREBASE_SETUP.md
 MIGRATION_NOTES.md
+
+# Logs
+logs/
+errorlog.txt
+*.log
