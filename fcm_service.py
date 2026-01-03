@@ -42,13 +42,14 @@ def send_notification(fcm_token, title, body, data=None):
             current_app.logger.error(f"FCM Notification FAILED - Firebase not initialized. Title: '{title}', Body: '{body}'")
             return False
         
-        # Configure Android notification with sound
+        # Configure Android notification - let channel handle sound settings
         android_config = messaging.AndroidConfig(
             priority='high',
             notification=messaging.AndroidNotification(
-                sound='default',
                 channel_id='task_notifications',  # Should match channel ID in Android app
                 priority='high',
+                # Don't specify sound here - let the notification channel handle it
+                # The channel is configured with sound in MainApplication.kt
             )
         )
         
@@ -100,13 +101,25 @@ def send_notification_to_multiple(tokens, title, body, data=None):
             current_app.logger.error(f"FCM Notification MULTICAST FAILED - Firebase not initialized. Title: '{title}', Body: '{body}', Tokens: {len(valid_tokens)}")
             return {'success': 0, 'failure': len(valid_tokens)}
         
-        # Configure Android notification with sound
+        # Configure Android notification - let channel handle sound settings
         android_config = messaging.AndroidConfig(
             priority='high',
             notification=messaging.AndroidNotification(
-                sound='default',
                 channel_id='task_notifications',  # Should match channel ID in Android app
                 priority='high',
+                # Don't specify sound here - let the notification channel handle it
+                # The channel is configured with sound in MainApplication.kt
+            )
+        )
+        
+        # Configure Android notification - let channel handle sound settings
+        android_config = messaging.AndroidConfig(
+            priority='high',
+            notification=messaging.AndroidNotification(
+                channel_id='task_notifications',  # Should match channel ID in Android app
+                priority='high',
+                # Don't specify sound here - let the notification channel handle it
+                # The channel is configured with sound in MainApplication.kt
             )
         )
         
