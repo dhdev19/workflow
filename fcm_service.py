@@ -42,6 +42,16 @@ def send_notification(fcm_token, title, body, data=None):
             current_app.logger.error(f"FCM Notification FAILED - Firebase not initialized. Title: '{title}', Body: '{body}'")
             return False
         
+        # Configure Android notification with sound
+        android_config = messaging.AndroidConfig(
+            priority='high',
+            notification=messaging.AndroidNotification(
+                sound='default',
+                channel_id='task_notifications',  # Should match channel ID in Android app
+                priority='high',
+            )
+        )
+        
         message = messaging.Message(
             notification=messaging.Notification(
                 title=title,
@@ -49,6 +59,7 @@ def send_notification(fcm_token, title, body, data=None):
             ),
             data=data or {},
             token=fcm_token,
+            android=android_config,
         )
         
         response = messaging.send(message)
@@ -89,6 +100,16 @@ def send_notification_to_multiple(tokens, title, body, data=None):
             current_app.logger.error(f"FCM Notification MULTICAST FAILED - Firebase not initialized. Title: '{title}', Body: '{body}', Tokens: {len(valid_tokens)}")
             return {'success': 0, 'failure': len(valid_tokens)}
         
+        # Configure Android notification with sound
+        android_config = messaging.AndroidConfig(
+            priority='high',
+            notification=messaging.AndroidNotification(
+                sound='default',
+                channel_id='task_notifications',  # Should match channel ID in Android app
+                priority='high',
+            )
+        )
+        
         message = messaging.MulticastMessage(
             notification=messaging.Notification(
                 title=title,
@@ -96,6 +117,7 @@ def send_notification_to_multiple(tokens, title, body, data=None):
             ),
             data=data or {},
             tokens=valid_tokens,
+            android=android_config,
         )
         
         response = messaging.send_multicast(message)
