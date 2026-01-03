@@ -347,6 +347,7 @@ def forward_task(task_id):
                 db.session.delete(assignment)
         
         # Add assignments for checked users who don't have one yet
+        assigned_users = []
         existing_user_ids = {a.user_id for a in current_assignments}
         for member in dept_members:
             if member.id in checked_user_ids and member.id not in existing_user_ids:
@@ -356,8 +357,15 @@ def forward_task(task_id):
                     assigned_by_id=current_user.id
                 )
                 db.session.add(assignment)
+                assigned_users.append(member)
         
         db.session.commit()
+        
+        # Send FCM notifications to newly assigned team members
+        from utils import send_task_assignment_notification
+        for user in assigned_users:
+            send_task_assignment_notification(user, task, current_user)
+        
         flash('Task forwarded successfully', 'success')
         return redirect(url_for('dept_head.dashboard'))
     

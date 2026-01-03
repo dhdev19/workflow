@@ -404,16 +404,41 @@ def assign_task(task_id):
                     db.session.add(assignment)
                     assigned_users.append(user)
             elif assign_type[i] == 'department' and user_id:
+                # Assign to department: create TaskDepartmentAssignment and auto-assign department head
                 dept = Department.query.get(int(user_id))
                 if dept:
-                    for member in dept.members:
-                        assignment = TaskAssignment(
+                    # Create TaskDepartmentAssignment record
+                    dept_assignment = TaskDepartmentAssignment(
+                        task_id=task.id,
+                        department_id=dept.id,
+                        assigned_by_id=current_user.id
+                    )
+                    db.session.add(dept_assignment)
+                    
+                    # Initialize completion status
+                    completion = DepartmentTaskCompletion(
+                        task_id=task.id,
+                        department_id=dept.id,
+                        is_completed=False
+                    )
+                    db.session.add(completion)
+                    
+                    # Auto-assign to department head
+                    dept_head = User.query.filter_by(department_id=dept.id, role='department_head').first()
+                    if dept_head:
+                        # Check if department head is already assigned (avoid duplicate)
+                        existing_assignment = TaskAssignment.query.filter_by(
                             task_id=task.id,
-                            user_id=member.id,
-                            assigned_by_id=current_user.id
-                        )
-                        db.session.add(assignment)
-                        assigned_users.append(member)
+                            user_id=dept_head.id
+                        ).first()
+                        if not existing_assignment:
+                            assignment = TaskAssignment(
+                                task_id=task.id,
+                                user_id=dept_head.id,
+                                assigned_by_id=current_user.id
+                            )
+                            db.session.add(assignment)
+                            assigned_users.append(dept_head)
         
         db.session.commit()
         
@@ -462,6 +487,7 @@ def reassign_task(task_id):
                     db.session.delete(completion)
         
         # Add assignments for checked departments that don't have one yet
+        assigned_users = []
         for dept_id in checked_dept_ids:
             if dept_id not in current_dept_ids:
                 dept_assignment = TaskDepartmentAssignment(
@@ -478,11 +504,34 @@ def reassign_task(task_id):
                     is_completed=False
                 )
                 db.session.add(completion)
+                
+                # Auto-assign to department head
+                dept_head = User.query.filter_by(department_id=dept_id, role='department_head').first()
+                if dept_head:
+                    # Check if department head is already assigned (avoid duplicate)
+                    existing_assignment = TaskAssignment.query.filter_by(
+                        task_id=task.id,
+                        user_id=dept_head.id
+                    ).first()
+                    if not existing_assignment:
+                        assignment = TaskAssignment(
+                            task_id=task.id,
+                            user_id=dept_head.id,
+                            assigned_by_id=current_user.id
+                        )
+                        db.session.add(assignment)
+                        assigned_users.append(dept_head)
         
         # Update overall task status based on department completions
         _update_task_completion_status(task)
         
         db.session.commit()
+        
+        # Send FCM notifications to newly assigned department heads
+        from utils import send_task_assignment_notification
+        for user in assigned_users:
+            send_task_assignment_notification(user, task, current_user)
+        
         flash('Task reassigned to departments successfully', 'success')
         return redirect(url_for('admin.dashboard'))
     
@@ -516,6 +565,7 @@ def approve_request(request_id):
         return redirect(url_for('admin.approvals'))
     
     task = approval_request.task
+    assigned_users = []  # Track users to notify
     
     if approval_request.request_type == 'reassign':
         # Reassign task to new department head
@@ -561,6 +611,23 @@ def approve_request(request_id):
                     is_completed=False
                 )
                 db.session.add(completion)
+                
+                # Auto-assign to department head
+                dept_head = User.query.filter_by(department_id=dept_id, role='department_head').first()
+                if dept_head:
+                    # Check if department head is already assigned (avoid duplicate)
+                    existing_assignment = TaskAssignment.query.filter_by(
+                        task_id=task.id,
+                        user_id=dept_head.id
+                    ).first()
+                    if not existing_assignment:
+                        assignment = TaskAssignment(
+                            task_id=task.id,
+                            user_id=dept_head.id,
+                            assigned_by_id=approval_request.requested_by_id
+                        )
+                        db.session.add(assignment)
+                        assigned_users.append(dept_head)
         
         # Update overall task status based on department completions
         _update_task_completion_status(task)
@@ -572,6 +639,17 @@ def approve_request(request_id):
     approval_request.updated_at = datetime.utcnow()
     
     db.session.commit()
+    
+    # Send FCM notifications to newly assigned department heads
+    if approval_request.request_type == 'assign_departments' and assigned_users:
+        from utils import send_task_assignment_notification
+        for user in assigned_users:
+            send_task_assignment_notification(user, task, current_user)
+    elif approval_request.request_type == 'reassign':
+        # Send notification to new department head
+        from utils import send_task_assignment_notification
+        send_task_assignment_notification(approval_request.new_dept_head, task, current_user)
+    
     flash('Request approved successfully', 'success')
     return redirect(url_for('admin.approvals'))
 
