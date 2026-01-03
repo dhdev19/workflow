@@ -290,17 +290,41 @@ def create_task():
                     db.session.add(assignment)
                     assigned_users.append(user)
             elif assign_type[i] == 'department' and user_id:
-                # Assign to all members of department
+                # Assign to department: create TaskDepartmentAssignment and auto-assign department head
                 dept = Department.query.get(int(user_id))
                 if dept:
-                    for member in dept.members:
-                        assignment = TaskAssignment(
+                    # Create TaskDepartmentAssignment record
+                    dept_assignment = TaskDepartmentAssignment(
+                        task_id=task.id,
+                        department_id=dept.id,
+                        assigned_by_id=current_user.id
+                    )
+                    db.session.add(dept_assignment)
+                    
+                    # Initialize completion status
+                    completion = DepartmentTaskCompletion(
+                        task_id=task.id,
+                        department_id=dept.id,
+                        is_completed=False
+                    )
+                    db.session.add(completion)
+                    
+                    # Auto-assign to department head
+                    dept_head = User.query.filter_by(department_id=dept.id, role='department_head').first()
+                    if dept_head:
+                        # Check if department head is already assigned (avoid duplicate)
+                        existing_assignment = TaskAssignment.query.filter_by(
                             task_id=task.id,
-                            user_id=member.id,
-                            assigned_by_id=current_user.id
-                        )
-                        db.session.add(assignment)
-                        assigned_users.append(member)
+                            user_id=dept_head.id
+                        ).first()
+                        if not existing_assignment:
+                            assignment = TaskAssignment(
+                                task_id=task.id,
+                                user_id=dept_head.id,
+                                assigned_by_id=current_user.id
+                            )
+                            db.session.add(assignment)
+                            assigned_users.append(dept_head)
         
         db.session.commit()
         
