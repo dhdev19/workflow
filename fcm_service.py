@@ -52,10 +52,12 @@ def send_notification(fcm_token, title, body, data=None):
         )
         
         response = messaging.send(message)
-        # Log to error log file (even successful sends)
+        # Log to production log (INFO) and error log (ERROR)
+        current_app.logger.info(f"FCM Notification SENT - Title: '{title}', Body: '{body}', Token: {fcm_token[:20]}..., Response: {response}")
         current_app.logger.error(f"FCM Notification SENT - Title: '{title}', Body: '{body}', Token: {fcm_token[:20]}..., Response: {response}")
         return True
     except Exception as e:
+        # Log failures to both logs
         current_app.logger.error(f"FCM Notification FAILED - Title: '{title}', Body: '{body}', Token: {fcm_token[:20] if fcm_token else 'None'}..., Error: {str(e)}")
         return False
 
@@ -97,10 +99,12 @@ def send_notification_to_multiple(tokens, title, body, data=None):
         )
         
         response = messaging.send_multicast(message)
-        # Log to error log file (even successful sends)
+        # Log to production log (INFO) and error log (ERROR)
+        current_app.logger.info(f"FCM Notification MULTICAST - Title: '{title}', Body: '{body}', Tokens: {len(valid_tokens)}, Success: {response.success_count}, Failed: {response.failure_count}")
         current_app.logger.error(f"FCM Notification MULTICAST - Title: '{title}', Body: '{body}', Tokens: {len(valid_tokens)}, Success: {response.success_count}, Failed: {response.failure_count}")
         return {'success': response.success_count, 'failure': response.failure_count}
     except Exception as e:
+        # Log failures to both logs
         current_app.logger.error(f"FCM Notification MULTICAST FAILED - Title: '{title}', Body: '{body}', Tokens: {len(valid_tokens)}, Error: {str(e)}")
         return {'success': 0, 'failure': len(valid_tokens)}
 

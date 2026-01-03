@@ -97,6 +97,8 @@ def send_task_assignment_notification(user, task, assigned_by):
         from flask import current_app
         if current_app:
             status = "SUCCESS" if result else "FAILED"
+            # Log to production log (INFO) and error log (ERROR)
+            current_app.logger.info(f"FCM Task Assignment Notification - {status} - User: {user.email} (ID: {user.id}), Task: '{task.task_name}' (ID: {task.id}), Assigned by: {assigned_by.email}")
             current_app.logger.error(f"FCM Task Assignment Notification - {status} - User: {user.email} (ID: {user.id}), Task: '{task.task_name}' (ID: {task.id}), Assigned by: {assigned_by.email}")
         return result
     except Exception as e:

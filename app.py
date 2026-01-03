@@ -11,29 +11,40 @@ def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
     
-    # Setup error logging for production
+    # Setup logging for production
     if config_class.IS_PRODUCTION:
         # Configure logging to file
         if not app.debug:
-            # Setup file handler with rotation (errorlog.txt in root directory)
-            log_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'errorlog.txt')
-            file_handler = RotatingFileHandler(
-                log_file,
+            # Setup error log handler (ERROR level only) - errorlog.txt
+            error_log_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'errorlog.txt')
+            error_handler = RotatingFileHandler(
+                error_log_file,
                 maxBytes=10240000,  # 10MB
                 backupCount=10
             )
-            file_handler.setLevel(logging.ERROR)
+            error_handler.setLevel(logging.ERROR)
             
-            # Create formatter
+            # Setup production log handler (INFO level and above) - prodlogs.txt
+            prod_log_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'prodlogs.txt')
+            prod_handler = RotatingFileHandler(
+                prod_log_file,
+                maxBytes=10240000,  # 10MB
+                backupCount=10
+            )
+            prod_handler.setLevel(logging.INFO)
+            
+            # Create formatter for both handlers
             formatter = logging.Formatter(
                 '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]',
                 datefmt='%Y-%m-%d %H:%M:%S'
             )
-            file_handler.setFormatter(formatter)
+            error_handler.setFormatter(formatter)
+            prod_handler.setFormatter(formatter)
             
-            # Add handler to app logger
-            app.logger.addHandler(file_handler)
-            app.logger.setLevel(logging.ERROR)
+            # Add both handlers to app logger
+            app.logger.addHandler(error_handler)
+            app.logger.addHandler(prod_handler)
+            app.logger.setLevel(logging.INFO)  # Set to INFO to capture all logs
     
     # Apply engine options to app config if using MySQL
     if hasattr(config_class, 'SQLALCHEMY_ENGINE_OPTIONS') and config_class.SQLALCHEMY_ENGINE_OPTIONS:

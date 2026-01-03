@@ -231,6 +231,12 @@ def create_task():
             # No other departments, just commit
             db.session.commit()
             
+            # Log task creation
+            from flask import current_app
+            if current_app:
+                assigned_info = f", Assigned to: {len(assigned_users)} user(s)" if assigned_users else ""
+                current_app.logger.info(f"Task CREATED (Dept Head) - ID: {task.id}, Name: '{task.task_name}', Priority: {task.priority}, Department ID: {task.department_id}, Created by: {current_user.email} (ID: {current_user.id}){assigned_info}")
+            
             # Send FCM notifications to assigned users
             from utils import send_task_assignment_notification
             for user in assigned_users:

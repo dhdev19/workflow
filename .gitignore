@@ -63,4 +63,5 @@ MIGRATION_NOTES.md
 # Logs
 logs/
 errorlog.txt
+prodlogs.txt
 *.log

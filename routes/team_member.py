@@ -83,6 +83,11 @@ def create_task():
         db.session.add(assignment)
         db.session.commit()
         
+        # Log task creation
+        from flask import current_app
+        if current_app:
+            current_app.logger.info(f"Task CREATED (Team Member) - ID: {task.id}, Name: '{task.task_name}', Priority: {task.priority}, Department ID: {task.department_id}, Created by: {current_user.email} (ID: {current_user.id})")
+        
         # Send FCM notification to self (since task is auto-assigned)
         from utils import send_task_assignment_notification
         send_task_assignment_notification(current_user, task, current_user)

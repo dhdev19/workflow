@@ -328,6 +328,12 @@ def create_task():
         
         db.session.commit()
         
+        # Log task creation
+        from flask import current_app
+        if current_app:
+            assigned_info = f", Assigned to: {len(assigned_users)} user(s)" if assigned_users else ""
+            current_app.logger.info(f"Task CREATED - ID: {task.id}, Name: '{task.task_name}', Priority: {task.priority}, Department ID: {task.department_id}, Created by: {current_user.email} (ID: {current_user.id}){assigned_info}")
+        
         # Send FCM notifications to assigned users
         from utils import send_task_assignment_notification
         for user in assigned_users:
@@ -361,6 +367,12 @@ def edit_task(task_id):
             task.deadline = None
         
         db.session.commit()
+        
+        # Log task update
+        from flask import current_app
+        if current_app:
+            current_app.logger.info(f"Task UPDATED - ID: {task.id}, Name: '{task.task_name}', Priority: {task.priority}, Status: {task.status}, Updated by: {current_user.email} (ID: {current_user.id})")
+        
         flash('Task updated successfully', 'success')
         return redirect(url_for('admin.dashboard'))
     
@@ -373,7 +385,16 @@ def edit_task(task_id):
 def delete_task(task_id):
     task = Task.query.get_or_404(task_id)
     db.session.delete(task)
+    task_name = task.task_name
+    task_id = task.id
+    db.session.delete(task)
     db.session.commit()
+    
+    # Log task deletion
+    from flask import current_app
+    if current_app:
+        current_app.logger.info(f"Task DELETED - ID: {task_id}, Name: '{task_name}', Deleted by: {current_user.email} (ID: {current_user.id})")
+    
     flash('Task deleted successfully', 'success')
     return redirect(url_for('admin.dashboard'))
 
@@ -526,6 +547,12 @@ def reassign_task(task_id):
         _update_task_completion_status(task)
         
         db.session.commit()
+        
+        # Log task reassignment
+        from flask import current_app
+        if current_app:
+            dept_info = f", New departments: {len(checked_dept_ids)}" if checked_dept_ids else ""
+            current_app.logger.info(f"Task REASSIGNED - ID: {task.id}, Name: '{task.task_name}', Reassigned by: {current_user.email} (ID: {current_user.id}){dept_info}")
         
         # Send FCM notifications to newly assigned department heads
         from utils import send_task_assignment_notification
